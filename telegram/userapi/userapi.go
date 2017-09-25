@@ -4,8 +4,8 @@ import (
     "fmt"
     "time"
 
-    tuapi "github.com/andreyvit/telegramapi"
-    "github.com/andreyvit/telegramapi/mtproto"
+    tuapi "github.com/PROger4ever/telegramapi"
+    "github.com/PROger4ever/telegramapi/mtproto"
     "log"
     "errors"
 )

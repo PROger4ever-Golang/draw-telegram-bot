@@ -11,14 +11,13 @@ import (
 
     "gopkg.in/mgo.v2"
     "github.com/go-telegram-bot-api/telegram-bot-api"
-    tuapi "github.com/andreyvit/telegramapi"
-    "github.com/andreyvit/telegramapi/mtproto"
+    tuapi "github.com/PROger4ever/telegramapi"
+    "github.com/PROger4ever/telegramapi/mtproto"
 
-    "./common"
-    "./config"
-    "./telegram/userapi"
+    "bitbucket.org/proger4ever/drawtelegrambot/common"
+    "bitbucket.org/proger4ever/drawtelegrambot/config"
+    "bitbucket.org/proger4ever/drawtelegrambot/telegram/userapi"
     "gopkg.in/mgo.v2/bson"
-    _"strconv"
     "strconv"
 )
 
