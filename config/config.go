@@ -1,44 +1,34 @@
 package config
 
 import (
-	"encoding/json"
-	"os"
+	"strings"
+
+	"github.com/jinzhu/configor"
 )
 
 type Config struct {
-	Telegram struct {
-		BotApi struct {
-			ID  int    `json:"id"`
-			Key string `json:"key"`
-		} `json:"botApi"`
-		UserApi struct {
-			Host      string `json:"host"`
-			Port      int    `json:"port"`
-			PublicKey string `json:"publicKey"`
-			ApiId     int    `json:"apiId"`
-			ApiHash   string `json:"apiHash"`
-		} `json:"userApi"`
-	} `json:"telegram"`
-	Mongo struct {
-		Host string `json:"host"`
-		Port int    `json:"port"`
-	} `json:"mongo"`
+	BotApi struct {
+		ID  int    `required:"true"`
+		Key string `required:"true"`
+	}
+	UserApi struct {
+		Host      string `required:"true"`
+		Port      int    `required:"true"`
+		PublicKey string `required:"true"`
+		ApiId     int    `required:"true"`
+		ApiHash   string `required:"true"`
+	}
+	OwnerID         int    `required:"true" env:"OWNER_ID"`
+	ChannelUsername string `required:"true" env:"CHANNEL_USERNAME"`
+	Mongo           struct {
+		Host string `required:"true"`
+		Port int    `required:"true"`
+	}
 }
 
 func LoadConfig(file string) (Config, error) {
 	var config Config
-
-	configFile, err := os.Open(file)
-	defer configFile.Close()
-	if err != nil {
-		return Config{}, err
-	}
-
-	jsonParser := json.NewDecoder(configFile)
-	err = jsonParser.Decode(&config)
-	if err != nil {
-		return Config{}, err
-	}
-
-	return config, nil
+	err := configor.New(&configor.Config{ENVPrefix: "-"}).Load(&config, "config.json")
+	config.UserApi.PublicKey = strings.Replace(config.UserApi.PublicKey, "\\n", "\n", -1)
+	return config, err
 }
