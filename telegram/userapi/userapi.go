@@ -11,25 +11,46 @@ import (
 	"github.com/PROger4ever/telegramapi/mtproto"
 )
 
+func UserTypesToUsers(userTypes *[]mtproto.TLUserType) *[]*mtproto.TLUser {
+	users := []*mtproto.TLUser{}
+	for _, userType := range *userTypes {
+		user := userType.(*mtproto.TLUser)
+		users = append(users, user)
+	}
+	return &users
+}
+
 type Tool struct {
 	Conn    *tuapi.Conn
 	State   *tuapi.State
 	StateCh chan tuapi.State
-	ErrCh   chan error
 	readyCh chan bool
+}
+
+func (tool *Tool) runProcessing(options *tuapi.Options) {
+	tool.Conn = tuapi.New(*options, tool.State, tool)
+	err := tool.Conn.Run()
+
+	fmt.Printf("reconnecting runProcessing: %v", err)
+	for err != nil {
+		fmt.Printf("reconnecting runProcessing: %v", err)
+		tool.State.PreferredDC = 0
+		tool.Conn = tuapi.New(*options, tool.State, tool)
+		err = tool.Conn.Run()
+	}
 }
 
 func (tool *Tool) HandleConnectionReady() {
 	tool.readyCh <- true
 }
+
 func (tool *Tool) HandleStateChanged(newState *tuapi.State) {
 	tool.State = newState
 	tool.StateCh <- *newState
 }
 
 func (tool *Tool) Run(state *tuapi.State, host string, port int, publicKey string, apiId int, apiHash string, verbose int) error {
-	var err error
-
+	tool.State = state
 	options := tuapi.Options{
 		SeedAddr:  tuapi.Addr{IP: host, Port: port},
 		PublicKey: publicKey,
@@ -39,19 +60,14 @@ func (tool *Tool) Run(state *tuapi.State, host string, port int, publicKey strin
 	}
 
 	tool.StateCh = make(chan tuapi.State, 5)
-	tool.ErrCh = make(chan error, 5)
 	tool.readyCh = make(chan bool, 5)
-	tool.Conn = tuapi.New(options, state, tool)
 
-	go tool.runProcessing()
-
+	go tool.runProcessing(&options)
 	select {
 	case <-tool.readyCh:
 		return nil
-	case err = <-tool.ErrCh:
-		return err
-	case <-time.After(1000 * time.Second):
-		return fmt.Errorf("timeout")
+	case <-time.After(30 * time.Second):
+		return errors.New("timeout")
 	}
 }
 
@@ -71,26 +87,67 @@ func (tool *Tool) CompleteLoginWithCode(phoneCode string) (*mtproto.TLUser, erro
 	return nil, errors.New("can't cast response to TLUser type")
 }
 
-func (tool *Tool) MessagesGetFullChat(chatId int) (*mtproto.TLMessagesChatFull, error) {
-	r, err := tool.Conn.Send(&mtproto.TLMessagesGetFullChat{ChatID: chatId})
+func (tool *Tool) ChannelsGetParticipants(channelID int, accessHash uint64, filter mtproto.TLChannelParticipantsFilterType, offset int, limit int) (*mtproto.TLChannelsChannelParticipants, error) {
+	r, err := tool.Conn.Send(&mtproto.TLChannelsGetParticipants{
+		Channel: &mtproto.TLInputChannel{
+			ChannelID:  channelID,
+			AccessHash: accessHash,
+		},
+		Filter: filter,
+		Offset: offset,
+		Limit:  limit,
+	})
 	if err != nil {
 		return nil, err
 	}
-	switch r := r.(type) {
-	case *mtproto.TLMessagesChatFull:
+	switch r2 := r.(type) {
+	case *mtproto.TLChannelsChannelParticipants:
 		if tool.Conn.Verbose >= 2 {
-			log.Printf("Got messages.getFullChat response: %v", r)
+			log.Printf("Got channels.getParticipants response: %v", r2)
 		}
-		return r, nil
+		return r2, nil
 	default:
 		return nil, tool.Conn.HandleUnknownReply(r)
 	}
 }
 
-func (tool *Tool) runProcessing() {
-	err := tool.Conn.Run()
+func (tool *Tool) ContactsResolveUsername(username string) (*mtproto.TLContactsResolvedPeer, error) {
+	r, err := tool.Conn.Send(&mtproto.TLContactsResolveUsername{
+		Username: username,
+	})
 	if err != nil {
-		tool.ErrCh <- err
+		return nil, err
+	}
+	switch r2 := r.(type) {
+	case *mtproto.TLContactsResolvedPeer:
+		if tool.Conn.Verbose >= 2 {
+			log.Printf("Got contacts.ResolveUsername response: %v", r2)
+		}
+		return r2, nil
+	default:
+		return nil, tool.Conn.HandleUnknownReply(r)
+	}
+}
+
+func (tool *Tool) MessagesGetDialogs() (*tuapi.ContactList, error) {
+	contacts := tuapi.NewContactList()
+	err := tool.Conn.LoadChats(contacts, 1000, &mtproto.TLInputPeerEmpty{})
+	return contacts, err
+}
+
+func (tool *Tool) MessagesGetFullChat(chatId int) (*mtproto.TLMessagesChatFull, error) {
+	r, err := tool.Conn.Send(&mtproto.TLMessagesGetFullChat{ChatID: chatId})
+	if err != nil {
+		return nil, err
+	}
+	switch r2 := r.(type) {
+	case *mtproto.TLMessagesChatFull:
+		if tool.Conn.Verbose >= 2 {
+			log.Printf("Got messages.getFullChat response: %v", r2)
+		}
+		return r2, nil
+	default:
+		return nil, tool.Conn.HandleUnknownReply(r)
 	}
 }
 
