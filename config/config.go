@@ -18,9 +18,11 @@ type Config struct {
 		ApiId     int    `required:"true"`
 		ApiHash   string `required:"true"`
 	}
-	OwnerID         int    `required:"true" env:"OWNER_ID"`
-	ChannelUsername string `required:"true" env:"CHANNEL_USERNAME"`
-	Mongo           struct {
+	Management struct {
+		OwnerUsername   string `required:"true" env:"MANAGEMENT_OWNER_USERNAME"`
+		ChannelUsername string `required:"true" env:"MANAGEMENT_CHANNEL_USERNAME"`
+	}
+	Mongo struct {
 		Host string `required:"true"`
 		Port int    `required:"true"`
 	}

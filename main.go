@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -160,12 +159,15 @@ func sendBotError(chatID int64, err error) error {
 func processCmd(update tgbotapi.Update, chat *tgbotapi.Chat, name string, params []string) error {
 	switch name {
 	case "draw":
+		if chat.UserName != conf.Management.ChannelUsername {
+			return sendBotError(int64(chat.ID), errors.New("Розыгрыши недоступны в этом чате"))
+		}
+
 		r, err := tool.ContactsResolveUsername(chat.UserName)
 		if err != nil {
 			sendBotError(int64(chat.ID), err)
 			return err
 		}
-
 		channelInfo := r.Chats[0].(*mtproto.TLChannel)
 
 		userTypesAdmins, err := tool.ChannelsGetParticipants(channelInfo.ID, channelInfo.AccessHash, &mtproto.TLChannelParticipantsAdmins{},
@@ -180,8 +182,6 @@ func processCmd(update tgbotapi.Update, chat *tgbotapi.Chat, name string, params
 			adminsMap[admin.ID] = admin
 		}
 
-		//fmt.Printf("admins: %q\n", *admins)
-
 		userTypesAll, err := tool.ChannelsGetParticipants(channelInfo.ID, channelInfo.AccessHash, &mtproto.TLChannelParticipantsRecent{},
 			0, math.MaxInt32)
 		if err != nil {
@@ -190,8 +190,6 @@ func processCmd(update tgbotapi.Update, chat *tgbotapi.Chat, name string, params
 		}
 		usersAll := userapi.UserTypesToUsers(&userTypesAll.Users)
 
-		//fmt.Printf("usersAll: %q\n", *usersAll)
-
 		usersOnly := []*mtproto.TLUser{}
 		for _, user := range *usersAll {
 			_, isAdmin := adminsMap[user.ID]
@@ -199,8 +197,6 @@ func processCmd(update tgbotapi.Update, chat *tgbotapi.Chat, name string, params
 				usersOnly = append(usersOnly, user)
 			}
 		}
-
-		//fmt.Printf("usersOnly: %q\n", usersOnly)
 
 		usersOnlyLen := len(usersOnly)
 		if usersOnlyLen == 0 {
@@ -233,17 +229,12 @@ func processCmd(update tgbotapi.Update, chat *tgbotapi.Chat, name string, params
 		buffer = bytes.Buffer{}
 		buffer.WriteString("Итак, выигрывает...\n")
 		userLink := "tg://user?id=" + string(user.ID)
-		userString := fmt.Sprintf("[%v %v, %s id%d](%s)\n", user.FirstName, user.LastName, user.Username, user.ID, userLink)
+		userString := fmt.Sprintf("[%v %v (id%d %s)](%s)\n", user.FirstName, user.LastName, user.ID, user.Username, userLink)
 		buffer.WriteString(userString)
 		buffer.WriteString("Спасибо всем за участие!\n")
+
 		return sendBotMessage(int64(chat.ID), buffer.String())
 	case "startLogin":
-		// cmdLine := flag.NewFlagSet("", flag.PanicOnError)
-		// phone := cmdLine.String("phone", "", "")
-		// cmdLine.Parse(params)
-
-		// fmt.Printf("phone: %v", *phone)
-
 		if len(params) != 1 {
 			return errors.New("Params for command startLogin are incorrect")
 		}
@@ -251,7 +242,7 @@ func processCmd(update tgbotapi.Update, chat *tgbotapi.Chat, name string, params
 		err := tool.StartLogin(params[0])
 
 		if err == nil {
-			resp := fmt.Sprintf("```\n/completeLoginWithCode@%v -\n```", bot.Self.UserName)
+			resp := fmt.Sprintf("Отправь мне пришедший код, вставив в него минус:\n```\n/completeLoginWithCode -\n```")
 			err = sendBotMessage(int64(chat.ID), resp)
 		} else {
 			err = sendBotError(int64(chat.ID), err)
@@ -272,28 +263,29 @@ func processCmd(update tgbotapi.Update, chat *tgbotapi.Chat, name string, params
 			err = sendBotError(int64(chat.ID), err)
 		}
 		return err
-	case "getDialogs":
-		r, err := tool.MessagesGetDialogs()
-		if err == nil {
-			bs, err := json.Marshal(r)
-			resp := fmt.Sprintf("```\nMessagesGetDialogs result: %s, %q\n```", string(bs), err)
-			err = sendBotMessage(int64(chat.ID), resp)
-		} else {
-			err = sendBotError(int64(chat.ID), err)
-		}
-		return err
-	case "msgTest":
-		resp := fmt.Sprintf("```\n/completeLoginWithCode@%v -\n```", bot.Self.UserName)
-		return sendBotMessage(int64(chat.ID), resp)
-	case "panic":
-		panic("panic test")
+	// case "getDialogs":
+	// 	r, err := tool.MessagesGetDialogs()
+	// 	if err == nil {
+	// 		bs, err := json.Marshal(r)
+	// 		resp := fmt.Sprintf("```\nMessagesGetDialogs result: %s, %q\n```", string(bs), err)
+	// 		err = sendBotMessage(int64(chat.ID), resp)
+	// 	} else {
+	// 		err = sendBotError(int64(chat.ID), err)
+	// 	}
+	// 	return err
+	// case "msgTest":
+	// 	resp := fmt.Sprintf("```\n/completeLoginWithCode@%v -\n```", bot.Self.UserName)
+	// 	return sendBotMessage(int64(chat.ID), resp)
+	// case "panic":
+	// 	panic("panic test")
 	default:
 		err := fmt.Errorf("Unknown cmd: %v", name)
 		return sendBotError(int64(chat.ID), err)
 	}
 }
 
-func processMessage(update tgbotapi.Update, chat *tgbotapi.Chat, txt string) error {
+func processMessage(update tgbotapi.Update, chat *tgbotapi.Chat, msg *tgbotapi.Message) error {
+	txt := msg.Text
 	cmdSubmatches := cmdRegexp.FindStringSubmatch(txt)
 	if len(cmdSubmatches) == 0 {
 		return nil
@@ -306,7 +298,13 @@ func processMessage(update tgbotapi.Update, chat *tgbotapi.Chat, txt string) err
 		return nil
 	}
 
-	fmt.Printf("Got cmd for me: %v\nGot params: %q\n", cmdName, cmdParams)
+	fmt.Printf("Got cmd for me: %v, params: %q\n", cmdName, cmdParams)
+	if msg.From != nil {
+		fmt.Printf("From: id%d %s <%s %s>\n", msg.From.ID, msg.From.UserName, msg.From.FirstName, msg.From.LastName)
+		if msg.From.UserName != conf.Management.OwnerUsername {
+			return sendBotError(int64(msg.Chat.ID), errors.New("Ты не мой ПОВЕЛИТЕЛЬ! Я тебя не слушаюсь!"))
+		}
+	}
 	return processCmd(update, chat, cmdName, cmdParams)
 }
 
@@ -321,7 +319,7 @@ func processUpdate(update tgbotapi.Update) {
 	}
 
 	if len(msg.Text) > 0 {
-		err := processMessage(update, msg.Chat, msg.Text)
+		err := processMessage(update, msg.Chat, msg)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Expected error while processing message: %v\n", err)
 		}
