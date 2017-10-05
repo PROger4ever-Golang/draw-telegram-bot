@@ -28,9 +28,9 @@ type Config struct {
 	}
 }
 
-func LoadConfig(file string) (Config, error) {
+func LoadConfig(file string) (*Config, error) {
 	var config Config
 	err := configor.New(&configor.Config{ENVPrefix: "-"}).Load(&config, "config.json")
 	config.UserApi.PublicKey = strings.Replace(config.UserApi.PublicKey, "\\n", "\n", -1)
-	return config, err
+	return &config, err
 }

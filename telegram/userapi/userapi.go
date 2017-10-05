@@ -32,7 +32,7 @@ func (tool *Tool) runProcessing(options *tuapi.Options) {
 	err := tool.Conn.Run()
 
 	fmt.Printf("reconnecting runProcessing: %v", err)
-	for err != nil {
+	for /*err != nil*/ { //sometimes err is nil, when connection is lost
 		fmt.Printf("reconnecting runProcessing: %v", err)
 		tool.State.PreferredDC = 0
 		tool.Conn = tuapi.New(*options, tool.State, tool)
@@ -41,7 +41,10 @@ func (tool *Tool) runProcessing(options *tuapi.Options) {
 }
 
 func (tool *Tool) HandleConnectionReady() {
-	tool.readyCh <- true
+	if tool.readyCh != nil {
+		tool.readyCh <- true
+		tool.readyCh = nil
+	}
 }
 
 func (tool *Tool) HandleStateChanged(newState *tuapi.State) {
@@ -60,7 +63,7 @@ func (tool *Tool) Run(state *tuapi.State, host string, port int, publicKey strin
 	}
 
 	tool.StateCh = make(chan tuapi.State, 5)
-	tool.readyCh = make(chan bool, 5)
+	tool.readyCh = make(chan bool, 1)
 
 	go tool.runProcessing(&options)
 	select {
