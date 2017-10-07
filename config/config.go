@@ -8,8 +8,9 @@ import (
 
 type Config struct {
 	BotApi struct {
-		ID  int    `required:"true"`
-		Key string `required:"true"`
+		ID    int    `required:"true"`
+		Key   string `required:"true"`
+		Debug bool
 	}
 	UserApi struct {
 		Host      string `required:"true"`
@@ -17,6 +18,7 @@ type Config struct {
 		PublicKey string `required:"true"`
 		ApiId     int    `required:"true"`
 		ApiHash   string `required:"true"`
+		Debug     int
 	}
 	Management struct {
 		OwnerUsername   string `required:"true" env:"MANAGEMENT_OWNER_USERNAME"`

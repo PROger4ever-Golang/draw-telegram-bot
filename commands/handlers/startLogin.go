@@ -7,7 +7,7 @@ import (
 
 	"bitbucket.org/proger4ever/drawtelegrambot/commands/utils"
 	"bitbucket.org/proger4ever/drawtelegrambot/config"
-	"bitbucket.org/proger4ever/drawtelegrambot/telegram/userapi"
+	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
 )
 
 type StartLoginHandler struct {

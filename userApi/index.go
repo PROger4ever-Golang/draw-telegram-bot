@@ -2,6 +2,7 @@ package userapi
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"errors"
@@ -153,6 +154,32 @@ func (tool *Tool) MessagesGetFullChat(chatId int) (*mtproto.TLMessagesChatFull, 
 		return nil, tool.Conn.HandleUnknownReply(r)
 	}
 }
+func (tool *Tool) MessagesSendMessage(peer mtproto.TLInputPeerType, message string) (mtproto.TLUpdatesType, error) {
+	r, err := tool.Conn.Send(&mtproto.TLMessagesSendMessage{
+		Peer:     peer,
+		Message:  message,
+		RandomID: uint64(rand.Int()),
+	})
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("MessagesSendMessage result interface: %q\n", r)
+	switch r2 := r.(type) {
+	case mtproto.TLUpdatesType:
+		if tool.Conn.Verbose >= 2 {
+			log.Printf("Got messages.sendMessage response: %v", r2)
+		}
+		return r2, nil
+	default:
+		return nil, tool.Conn.HandleUnknownReply(r)
+	}
+}
+
+func (tool *Tool) MessagesSendMessageSelf(message string) (mtproto.TLUpdatesType, error) {
+	return tool.MessagesSendMessage(&mtproto.TLInputPeerSelf{}, message)
+}
+
+//sendMessage
 
 // tool.Conn.Fail(err)
 // tool.Conn.Shutdown()

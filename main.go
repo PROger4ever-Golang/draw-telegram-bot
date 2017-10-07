@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 
 	"bitbucket.org/proger4ever/drawtelegrambot/commands/routing"
 	"bitbucket.org/proger4ever/drawtelegrambot/common"
 	"bitbucket.org/proger4ever/drawtelegrambot/config"
 	"bitbucket.org/proger4ever/drawtelegrambot/stateSerializable"
-	"bitbucket.org/proger4ever/drawtelegrambot/telegram/userapi"
+	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
 )
 
 func main() {
@@ -41,7 +41,7 @@ func main() {
 	//region user api
 	uac := conf.UserApi
 	tool := &userapi.Tool{}
-	err = tool.Run(state, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, 3)
+	err = tool.Run(state, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, uac.Debug)
 	common.PanicIfError(err, "connecting to Telegram User API")
 	//fmt.Println(tool)
 	fmt.Println("Connected to Telegram User API.")
@@ -52,7 +52,7 @@ func main() {
 	competeKey := fmt.Sprintf("%v:%v", bac.ID, bac.Key)
 	bot, err := tgbotapi.NewBotAPI(competeKey)
 	common.PanicIfError(err, "creating bot instance")
-	bot.Debug = true
+	bot.Debug = bac.Debug
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	updates, err := bot.GetUpdatesChan(u)
@@ -69,6 +69,9 @@ func main() {
 			router.ProcessUpdate(&update)
 			break
 		case state := <-tool.StateCh:
+			if uac.Debug > 0 {
+				fmt.Println("saving state to mongo...")
+			}
 			stateSerializable.Save(mongoSession, &state)
 		}
 	}

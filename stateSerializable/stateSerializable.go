@@ -142,5 +142,4 @@ func Save(mongoSession *mgo.Session, state *tuapi.State) {
 		Value: NewStateSerializable(state),
 	})
 	common.PanicIfError(err, "saving bot state")
-	fmt.Println("save state")
 }

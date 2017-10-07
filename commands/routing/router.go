@@ -13,7 +13,7 @@ import (
 	"bitbucket.org/proger4ever/drawtelegrambot/commands/utils"
 	"bitbucket.org/proger4ever/drawtelegrambot/common"
 	"bitbucket.org/proger4ever/drawtelegrambot/config"
-	"bitbucket.org/proger4ever/drawtelegrambot/telegram/userapi"
+	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
 )
 
 var cmdRegexp = regexp.MustCompile("^/([A-Za-z0-9_-]+)(@([A-Za-z0-9_-]+))? ?(.*)")
