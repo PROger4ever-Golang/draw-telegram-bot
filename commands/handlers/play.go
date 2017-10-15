@@ -66,22 +66,22 @@ func (c *PlayHandler) Execute(chat *tgbotapi.Chat, params []string) error {
 	}
 	usersAll := userapi.UserTypesToUsers(&userTypesAll.Users)
 
-	uAdmins := []*mtproto.TLUser{}
-	uBots := []*mtproto.TLUser{}
-	uRuleBreakers := []*mtproto.TLUser{}
+	uAdmins := 0
+	uBots := 0
+	uRuleBreakers := 0
 	uParticipants := []*mtproto.TLUser{}
 	for _, user := range *usersAll {
 		_, isAdmin := adminsMap[user.ID]
 		isBot := user.Bot()
 		isRuleBreaker := (user.Username == "")
 		if isAdmin {
-			uAdmins = append(uAdmins, user)
+			uAdmins++
 		}
 		if isBot {
-			uBots = append(uBots, user)
+			uBots++
 		}
 		if isRuleBreaker {
-			uRuleBreakers = append(uRuleBreakers, user)
+			uRuleBreakers++
 		}
 		if !isAdmin && !isBot && !isRuleBreaker {
 			uParticipants = append(uParticipants, user)
@@ -89,14 +89,14 @@ func (c *PlayHandler) Execute(chat *tgbotapi.Chat, params []string) error {
 	}
 
 	bufferSelf := bytes.Buffer{}
-	bufferSelf.WriteString(fmt.Sprintf("Перед розыгрышем.\n Пользователей на канале: __%d__\n **Админы:**\n", len(*usersAll)))
-	utils.FormatUsers(&uAdmins, utils.FormatUserMarkdown, &bufferSelf)
-	bufferSelf.WriteString("**Боты:**\n")
-	utils.FormatUsers(&uBots, utils.FormatUserMarkdown, &bufferSelf)
-	bufferSelf.WriteString("**Нарушители правил:**\n")
-	utils.FormatUsers(&uRuleBreakers, utils.FormatUserMarkdown, &bufferSelf)
+	bufferSelf.WriteString(fmt.Sprintf("Перед розыгрышем.\n Пользователей на канале: __%d__\n **Админы:** __%d__\n", len(*usersAll), uAdmins))
+	//utils.FormatUsers(&uAdmins, utils.FormatUserMarkdown, &bufferSelf)
+	bufferSelf.WriteString(fmt.Sprintf("**Боты:** __%d__\n", uBots))
+	//utils.FormatUsers(&uBots, utils.FormatUserMarkdown, &bufferSelf)
+	bufferSelf.WriteString(fmt.Sprintf("**Нарушители правил:** __%d__\n", uRuleBreakers))
+	//utils.FormatUsers(&uRuleBreakers, utils.FormatUserMarkdown, &bufferSelf)
 	bufferSelf.WriteString(fmt.Sprintf("\n\nВ розыгрыше учавствуют %v пользователей:\n", len(uParticipants)))
-	utils.FormatUsers(&uParticipants, utils.FormatUserMarkdown, &bufferSelf)
+	//utils.FormatUsers(&uParticipants, utils.FormatUserMarkdown, &bufferSelf)
 	_, err = c.Tool.MessagesSendMessageSelf(bufferSelf.String())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error occured while c.Tool.MessagesSendMessageSelf()")
