@@ -32,9 +32,9 @@ func (tool *Tool) runProcessing(options *tuapi.Options) {
 	tool.Conn = tuapi.New(*options, tool.State, tool)
 	err := tool.Conn.Run()
 
-	fmt.Printf("reconnecting runProcessing: %v", err)
+	fmt.Printf("reconnecting runProcessing: %v\n", err)
 	for /*err != nil*/ { //sometimes err is nil, when connection is lost
-		fmt.Printf("reconnecting runProcessing: %v", err)
+		fmt.Printf("reconnecting runProcessing: %v\n", err)
 		tool.State.PreferredDC = 0
 		tool.Conn = tuapi.New(*options, tool.State, tool)
 		err = tool.Conn.Run()
