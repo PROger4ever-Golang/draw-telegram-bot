@@ -89,13 +89,13 @@ func (c *PlayHandler) Execute(chat *tgbotapi.Chat, params []string) error {
 	}
 
 	bufferSelf := bytes.Buffer{}
-	bufferSelf.WriteString(fmt.Sprintf("Перед розыгрышем.\n Пользователей на канале: __%d__\n **Админы:** __%d__\n", len(*usersAll), uAdmins))
+	bufferSelf.WriteString(fmt.Sprintf("Перед розыгрышем.\nПользователей на канале: __%d__\n**Админы:** __%d__\n", len(*usersAll), uAdmins))
 	//utils.FormatUsers(&uAdmins, utils.FormatUserMarkdown, &bufferSelf)
 	bufferSelf.WriteString(fmt.Sprintf("**Боты:** __%d__\n", uBots))
 	//utils.FormatUsers(&uBots, utils.FormatUserMarkdown, &bufferSelf)
 	bufferSelf.WriteString(fmt.Sprintf("**Нарушители правил:** __%d__\n", uRuleBreakers))
 	//utils.FormatUsers(&uRuleBreakers, utils.FormatUserMarkdown, &bufferSelf)
-	bufferSelf.WriteString(fmt.Sprintf("\n\nВ розыгрыше учавствуют %v пользователей:\n", len(uParticipants)))
+	bufferSelf.WriteString(fmt.Sprintf("\n\nВ розыгрыше учавствуют %v пользователей.", len(uParticipants)))
 	//utils.FormatUsers(&uParticipants, utils.FormatUserMarkdown, &bufferSelf)
 	_, err = c.Tool.MessagesSendMessageSelf(bufferSelf.String())
 	if err != nil {
