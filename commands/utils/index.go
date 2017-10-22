@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
+	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 
 	"github.com/PROger4ever/telegramapi/mtproto"
 

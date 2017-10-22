@@ -6,9 +6,9 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/commands/utils"
-	"bitbucket.org/proger4ever/drawtelegrambot/config"
-	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
+	"bitbucket.org/proger4ever/draw-telegram-bot/config"
+	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
 type CompleteLoginWithCodeHandler struct {

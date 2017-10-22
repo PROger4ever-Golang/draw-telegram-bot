@@ -9,11 +9,11 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/commands/handlers"
-	"bitbucket.org/proger4ever/drawtelegrambot/commands/utils"
-	"bitbucket.org/proger4ever/drawtelegrambot/common"
-	"bitbucket.org/proger4ever/drawtelegrambot/config"
-	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
+	"bitbucket.org/proger4ever/draw-telegram-bot/common"
+	"bitbucket.org/proger4ever/draw-telegram-bot/config"
+	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
 var cmdRegexp = regexp.MustCompile("^/([A-Za-z0-9_-]+)(@([A-Za-z0-9_-]+))? ?(.*)")

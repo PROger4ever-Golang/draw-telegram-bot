@@ -3,9 +3,9 @@ package stateSerializable
 import (
 	"fmt"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/config"
+	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/common"
+	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	tuapi "github.com/PROger4ever/telegramapi"
 	"github.com/PROger4ever/telegramapi/mtproto"
 	mgo "gopkg.in/mgo.v2"
