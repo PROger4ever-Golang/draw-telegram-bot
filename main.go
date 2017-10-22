@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	rand.NewSource(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano())
 
 	conf, err := config.LoadConfig("config.json")
 	common.PanicIfError(err, "reading/decoding config file")

@@ -158,7 +158,7 @@ func (tool *Tool) MessagesSendMessage(peer mtproto.TLInputPeerType, message stri
 	r, err := tool.Conn.Send(&mtproto.TLMessagesSendMessage{
 		Peer:     peer,
 		Message:  message,
-		RandomID: uint64(rand.Int()),
+		RandomID: rand.Uint64(),
 	})
 	if err != nil {
 		return nil, err
