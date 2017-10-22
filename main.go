@@ -11,7 +11,8 @@ import (
 	"bitbucket.org/proger4ever/drawtelegrambot/commands/routing"
 	"bitbucket.org/proger4ever/drawtelegrambot/common"
 	"bitbucket.org/proger4ever/drawtelegrambot/config"
-	"bitbucket.org/proger4ever/drawtelegrambot/stateSerializable"
+	"bitbucket.org/proger4ever/drawtelegrambot/mongo"
+	"bitbucket.org/proger4ever/drawtelegrambot/state"
 	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
 )
 
@@ -22,11 +23,13 @@ func main() {
 	common.PanicIfError(err, "reading/decoding config file")
 
 	//region mongo
-	mongoSession, state, err := stateSerializable.Init(conf)
-	defer mongoSession.Close()
+	mongoConnection, err := mongo.NewConnection(conf.Mongo.Host, conf.Mongo.Port)
+	common.PanicIfError(err, "while connecting to mongo")
+	defer mongoConnection.Close()
+	stateObj, err := state.Load(mongoConnection)
 	if err == nil {
-		// state = settingState.DecodeValue()
-		//state = stateSetting.Value
+		// stateObj = settingState.DecodeValue()
+		//stateObj = stateSetting.Value
 		fmt.Println("Bot state loaded from mongo")
 	} else {
 		if err == mgo.ErrNotFound {
@@ -35,13 +38,13 @@ func main() {
 			common.PanicIfError(err, "loading saved bot state from mongo")
 		}
 	}
-	fmt.Printf("state: %q", state)
+	fmt.Printf("stateObj: %q", stateObj)
 	//endregion
 
 	//region user api
 	uac := conf.UserApi
 	tool := &userapi.Tool{}
-	err = tool.Run(state, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, uac.Debug)
+	err = tool.Run(stateObj, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, uac.Debug)
 	common.PanicIfError(err, "connecting to Telegram User API")
 	//fmt.Println(tool)
 	fmt.Println("Connected to Telegram User API.")
@@ -68,11 +71,11 @@ func main() {
 		case update := <-updates:
 			router.ProcessUpdate(&update)
 			break
-		case state := <-tool.StateCh:
+		case stateObj := <-tool.StateCh:
 			if uac.Debug > 0 {
-				fmt.Println("saving state to mongo...")
+				fmt.Println("saving stateObj to mongo...")
 			}
-			stateSerializable.Save(mongoSession, &state)
+			state.Save(mongoConnection, &stateObj)
 		}
 	}
 }
