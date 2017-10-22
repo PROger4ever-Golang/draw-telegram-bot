@@ -19,7 +19,7 @@ func Load(conn *mongo.Connection) (state *tuapi.State, err error) {
 }
 
 func Save(conn *mongo.Connection, state *tuapi.State) {
-	err := settingState.New(conn).Upsert(bson.M{
+	err := settingState.New(conn).Upsert(&bson.M{
 		"name": "state",
 	}, &settingState.SettingState{
 		Name:  "state",

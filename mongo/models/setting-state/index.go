@@ -1,6 +1,8 @@
 package settingState
 
 import (
+	"reflect"
+
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/base-model"
 	tuapi "github.com/PROger4ever/telegramapi"
@@ -15,13 +17,24 @@ type SettingState struct {
 	Value *StateSerializable
 }
 
-func (m *SettingState) Init(connection *mongo.Connection) *SettingState {
-	m.BaseModel = baseModel.New(connection, "mazimotaBot", "settings")
+type SettingStateModel struct {
+	*baseModel.BaseModel
+	MongoSession   *mongo.Connection
+	DbName         string
+	CollectionName string
+}
+
+func (m *SettingStateModel) Init(connection *mongo.Connection) *SettingStateModel {
+	m.BaseModel = baseModel.New(connection, "mazimotaBot", "settings", reflect.TypeOf(&SettingState{}))
 	return m
 }
 
-func New(connection *mongo.Connection) *SettingState {
-	m := SettingState{}
+func (m *SettingStateModel) Upsert(query *bson.M, value *SettingState) error {
+	return m.BaseModel.UpsertUnsafe(query, value)
+}
+
+func New(connection *mongo.Connection) *SettingStateModel {
+	m := SettingStateModel{}
 	m.Init(connection)
 	return &m
 }

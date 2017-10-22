@@ -1,10 +1,12 @@
 package user
 
 import (
+	"reflect"
 	"time"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/base-model"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type User struct {
@@ -26,11 +28,21 @@ type UserModel struct {
 	CollectionName string
 }
 
-func (m *UserModel) Init(connection *mongo.Connection, collectionName string) {
-	m.BaseModel = baseModel.NewBaseModel(connection, "mazimotaBot", "users")
+func (m *UserModel) Init(connection *mongo.Connection) {
+	m.BaseModel = baseModel.New(connection, "mazimotaBot", "users", reflect.TypeOf(&User{}))
 }
 
-func NewUserModel(connection *mongo.Connection) *UserModel {
+func (m *UserModel) FindOne(query *bson.M) (obj *User, err error) {
+	obj = &User{}
+	err = m.BaseModel.FindOneUnsafe(query, obj)
+	return
+}
+
+func (m *UserModel) Insert(values ...*User) error {
+	return m.BaseModel.InsertUnsafe(values)
+}
+
+func New(connection *mongo.Connection) *UserModel {
 	m := UserModel{}
 	m.Init(connection)
 	return &m
