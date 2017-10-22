@@ -1,8 +1,8 @@
 package settingState
 
 import (
-	"bitbucket.org/proger4ever/drawtelegrambot/mongo"
-	"bitbucket.org/proger4ever/drawtelegrambot/mongo/models/base-model"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/base-model"
 	tuapi "github.com/PROger4ever/telegramapi"
 	"github.com/PROger4ever/telegramapi/mtproto"
 	"gopkg.in/mgo.v2/bson"

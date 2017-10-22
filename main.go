@@ -8,12 +8,12 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"gopkg.in/mgo.v2"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/commands/routing"
-	"bitbucket.org/proger4ever/drawtelegrambot/common"
-	"bitbucket.org/proger4ever/drawtelegrambot/config"
-	"bitbucket.org/proger4ever/drawtelegrambot/mongo"
-	"bitbucket.org/proger4ever/drawtelegrambot/state"
-	"bitbucket.org/proger4ever/drawtelegrambot/userApi"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
+	"bitbucket.org/proger4ever/draw-telegram-bot/common"
+	"bitbucket.org/proger4ever/draw-telegram-bot/config"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
+	"bitbucket.org/proger4ever/draw-telegram-bot/state"
+	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
 func main() {

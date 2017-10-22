@@ -3,8 +3,8 @@ package user
 import (
 	"time"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/mongo"
-	"bitbucket.org/proger4ever/drawtelegrambot/mongo/models/base-model"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/base-model"
 )
 
 type User struct {

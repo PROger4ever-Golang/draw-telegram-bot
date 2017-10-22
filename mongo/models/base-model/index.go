@@ -1,7 +1,7 @@
 package baseModel
 
 import (
-	"bitbucket.org/proger4ever/drawtelegrambot/mongo"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"gopkg.in/mgo.v2/bson"
 )
 

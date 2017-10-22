@@ -3,7 +3,7 @@ package mongo
 import (
 	"fmt"
 
-	"bitbucket.org/proger4ever/drawtelegrambot/common"
+	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	mgo "gopkg.in/mgo.v2"
 )
 
