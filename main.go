@@ -12,7 +12,7 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/stateSerializable"
-	userapi "bitbucket.org/proger4ever/mazimota-bot/userApi"
+	userapi "bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
 func main() {
