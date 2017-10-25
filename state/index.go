@@ -19,11 +19,14 @@ func Load(conn *mongo.Connection) (state *tuapi.State, err error) {
 }
 
 func Save(conn *mongo.Connection, state *tuapi.State) {
-	err := settingState.New(conn).Upsert(&bson.M{
-		"name": "state",
-	}, &settingState.SettingState{
+	ss := settingState.SettingState{
 		Name:  "state",
 		Value: settingState.NewStateSerializable(state),
+	}
+	ss.Init(settingState.NewCollection(conn))
+
+	_, err := ss.Upsert(&bson.M{
+		"name": "state",
 	})
 	common.PanicIfError(err, "saving bot state")
 }

@@ -13,12 +13,13 @@ type Connection struct {
 	Session *mgo.Session
 }
 
-func (c *Connection) Init(host string, port int) (err error) {
+func (c *Connection) Init(host string, port int) (*Connection, error) {
+	var err error
 	c.Session, err = mgo.Dial(fmt.Sprintf("%s:%d", host, port))
 	common.PanicIfError(err, "opening connection to mongo")
 	c.Session.SetMode(mgo.Monotonic, true)
 	fmt.Println("MongoSession opened")
-	return
+	return c, err
 }
 
 func (c *Connection) DB(dbName string) *mgo.Database {
@@ -35,6 +36,5 @@ func (c *Connection) Close() {
 
 func NewConnection(host string, port int) (connection *Connection, err error) {
 	connection = &Connection{}
-	err = connection.Init(host, port)
-	return
+	return connection.Init(host, port)
 }

@@ -41,6 +41,21 @@ func main() {
 	fmt.Printf("stateObj: %q", stateObj)
 	//endregion
 
+	// A case of using models
+	// uc := user.NewCollection(mongoConnection)
+	// us := user.New(uc)
+	// us.TelegramID = 10555555
+	// us.LastName = "LastName"
+	// us.FirstName = "FirstName"
+	// us.Username = "Username"
+	// _, err = us.UpsertId()
+	// common.PanicIfError(err, "user saving 1")
+
+	// us.LastName = "LastName Changed"
+	// _, err = us.UpsertId()
+	// common.PanicIfError(err, "user saving 2")
+	// os.Exit(0)
+
 	//region user api
 	uac := conf.UserApi
 	tool := &userapi.Tool{}
