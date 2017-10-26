@@ -57,3 +57,8 @@ func NewCollection(connection *mongo.Connection) *UserCollection {
 	c := UserCollection{}
 	return c.Init(connection)
 }
+
+func NewCollectionDefault() *UserCollection {
+	c := UserCollection{}
+	return c.Init(mongo.DefaultConnection)
+}

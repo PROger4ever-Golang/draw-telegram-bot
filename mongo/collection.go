@@ -105,3 +105,8 @@ func NewCollection(connection *Connection, dbName string, name string, theType r
 	c = &Collection{}
 	return c.Init(connection, dbName, name, theType)
 }
+
+func NewCollectionDefault(dbName string, name string, theType reflect.Type) (c *Collection) {
+	c = &Collection{}
+	return c.Init(DefaultConnection, dbName, name, theType)
+}

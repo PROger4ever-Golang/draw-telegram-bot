@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -12,6 +13,7 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/state"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
@@ -23,10 +25,10 @@ func main() {
 	common.PanicIfError(err, "reading/decoding config file")
 
 	//region mongo
-	mongoConnection, err := mongo.NewConnection(conf.Mongo.Host, conf.Mongo.Port)
+	mongoConnection, err := mongo.InitDefaultConnection(conf.Mongo.Host, conf.Mongo.Port)
 	common.PanicIfError(err, "while connecting to mongo")
 	defer mongoConnection.Close()
-	stateObj, err := state.Load(mongoConnection)
+	stateObj, err := state.Load()
 	if err == nil {
 		// stateObj = settingState.DecodeValue()
 		//stateObj = stateSetting.Value
@@ -42,19 +44,19 @@ func main() {
 	//endregion
 
 	// A case of using models
-	// uc := user.NewCollection(mongoConnection)
-	// us := user.New(uc)
-	// us.TelegramID = 10555555
-	// us.LastName = "LastName"
-	// us.FirstName = "FirstName"
-	// us.Username = "Username"
-	// _, err = us.UpsertId()
-	// common.PanicIfError(err, "user saving 1")
+	uc := user.NewCollectionDefault()
+	us := user.New(uc)
+	us.TelegramID = 10555555
+	us.LastName = "LastName"
+	us.FirstName = "FirstName"
+	us.Username = "Username"
+	_, err = us.UpsertId()
+	common.PanicIfError(err, "user saving 1")
 
-	// us.LastName = "LastName Changed"
-	// _, err = us.UpsertId()
-	// common.PanicIfError(err, "user saving 2")
-	// os.Exit(0)
+	us.LastName = "LastName Changed"
+	_, err = us.UpsertId()
+	common.PanicIfError(err, "user saving 2")
+	os.Exit(0)
 
 	//region user api
 	uac := conf.UserApi
@@ -90,7 +92,7 @@ func main() {
 			if uac.Debug > 0 {
 				fmt.Println("saving stateObj to mongo...")
 			}
-			state.Save(mongoConnection, &stateObj)
+			state.Save(&stateObj)
 		}
 	}
 }

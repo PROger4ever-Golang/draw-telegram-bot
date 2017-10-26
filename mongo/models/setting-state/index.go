@@ -147,3 +147,8 @@ func NewCollection(connection *mongo.Connection) *SettingStateCollection {
 	c := SettingStateCollection{}
 	return c.Init(connection)
 }
+
+func NewCollectionDefault() *SettingStateCollection {
+	c := SettingStateCollection{}
+	return c.Init(mongo.DefaultConnection)
+}

@@ -7,6 +7,8 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
+var DefaultConnection *Connection
+
 type Connection struct {
 	Host    string
 	Port    int
@@ -37,4 +39,9 @@ func (c *Connection) Close() {
 func NewConnection(host string, port int) (connection *Connection, err error) {
 	connection = &Connection{}
 	return connection.Init(host, port)
+}
+
+func InitDefaultConnection(host string, port int) (connection *Connection, err error) {
+	DefaultConnection, err = NewConnection(host, port)
+	return DefaultConnection, err
 }
