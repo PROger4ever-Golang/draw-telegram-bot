@@ -20,7 +20,6 @@ func (c *Connection) Init(host string, port int) (*Connection, error) {
 	c.Session, err = mgo.Dial(fmt.Sprintf("%s:%d", host, port))
 	common.PanicIfError(err, "opening connection to mongo")
 	c.Session.SetMode(mgo.Monotonic, true)
-	fmt.Println("MongoSession opened")
 	return c, err
 }
 

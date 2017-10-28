@@ -12,6 +12,8 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/setting-state"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/state"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
@@ -26,6 +28,14 @@ func main() {
 	mongoConnection, err := mongo.InitDefaultConnection(conf.Mongo.Host, conf.Mongo.Port)
 	common.PanicIfError(err, "while connecting to mongo")
 	defer mongoConnection.Close()
+	fmt.Println("Mongo session open")
+
+	err = settingState.NewCollectionDefault().EnsureIndexes()
+	common.PanicIfError(err, "while ensuring setting-state indexes")
+	err = user.NewCollectionDefault().EnsureIndexes()
+	common.PanicIfError(err, "while ensuring user indexes")
+	fmt.Println("All indexes are ensured")
+
 	stateObj, err := state.Load()
 	if err == nil {
 		// stateObj = settingState.DecodeValue()
@@ -40,23 +50,6 @@ func main() {
 	}
 	fmt.Printf("stateObj: %q", stateObj)
 	//endregion
-
-	// A case of using models
-	// uc := user.NewCollectionDefault()
-	// us := user.New(uc)
-	// us.TelegramID = 10555555
-	// us.LastName = "LastName"
-	// us.FirstName = "FirstName"
-	// us.Username = "Username"
-	// // fmt.Printf("\n\n1: %#v\n\n", us.BaseModel.GetContentMap())
-	// _, err = us.UpsertId()
-	// common.PanicIfError(err, "user saving 1")
-
-	// us.LastName = "LastName Changed"
-	// // fmt.Printf("2: %#v\n\n", us.BaseModel.GetContentMap()) //unsorted map :(
-	// _, err = us.UpsertId()
-	// common.PanicIfError(err, "user saving 2")
-	// os.Exit(0)
 
 	//region user api
 	uac := conf.UserApi

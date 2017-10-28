@@ -17,7 +17,7 @@ type SettingState struct {
 }
 
 func (m *SettingState) Init(collection *SettingStateCollection) *SettingState {
-	m.BaseModel = mongo.NewModel(collection.Collection, m)
+	m.BaseModel = mongo.NewModel(collection.BaseCollection, m)
 	return m
 }
 
@@ -29,19 +29,23 @@ func (m *SettingState) GetContentMap() bson.M {
 }
 
 type SettingStateCollection struct {
-	*mongo.Collection
-	MongoSession   *mongo.Connection
-	DbName         string
-	CollectionName string
+	*mongo.BaseCollection
 }
 
-func (c *SettingStateCollection) Init(connection *mongo.Connection) *SettingStateCollection {
-	c.Collection = mongo.NewCollection(connection, "mazimotaBot", "settings", reflect.TypeOf(&SettingState{}))
-	return c
+func (c *SettingStateCollection) Init(connection *mongo.Connection) {
+	c.BaseCollection = mongo.NewCollection(connection, c, "mazimotaBot", "settings", reflect.TypeOf(&SettingState{}))
+}
+
+func (c *SettingStateCollection) GetIndexes() []mgo.Index {
+	return []mgo.Index{}
+}
+
+func (c *SettingStateCollection) EnsureIndexes() error {
+	return c.BaseCollection.EnsureIndexes(c.GetIndexes())
 }
 
 func (c *SettingStateCollection) Upsert(query bson.M, value *SettingState) (info *mgo.ChangeInfo, err error) {
-	return c.Collection.UpsertUnsafe(query, value)
+	return c.BaseCollection.UpsertUnsafe(query, value)
 }
 
 func (ss *SettingState) DecodeValue() *tuapi.State {
@@ -150,12 +154,14 @@ func New(collection *SettingStateCollection) *SettingState {
 	return m.Init(collection)
 }
 
-func NewCollection(connection *mongo.Connection) *SettingStateCollection {
-	c := SettingStateCollection{}
-	return c.Init(connection)
+func NewCollection(connection *mongo.Connection) (c *SettingStateCollection) {
+	c = &SettingStateCollection{}
+	c.Init(connection)
+	return
 }
 
-func NewCollectionDefault() *SettingStateCollection {
-	c := SettingStateCollection{}
-	return c.Init(mongo.DefaultConnection)
+func NewCollectionDefault() (c *SettingStateCollection) {
+	c = &SettingStateCollection{}
+	c.Init(mongo.DefaultConnection)
+	return
 }

@@ -3,6 +3,8 @@ package user
 import (
 	"reflect"
 
+	"gopkg.in/mgo.v2"
+
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -18,7 +20,7 @@ type User struct {
 }
 
 func (m *User) Init(collection *UserCollection) *User {
-	m.BaseModel = mongo.NewModel(collection.Collection, m)
+	m.BaseModel = mongo.NewModel(collection.BaseCollection, m)
 	return m
 }
 
@@ -34,25 +36,34 @@ func (m *User) GetContentMap() bson.M {
 }
 
 type UserCollection struct {
-	*mongo.Collection
-	MongoSession   *mongo.Connection
-	DbName         string
-	CollectionName string
+	*mongo.BaseCollection
 }
 
-func (c *UserCollection) Init(connection *mongo.Connection) *UserCollection {
-	c.Collection = mongo.NewCollection(connection, "mazimotaBot", "users", reflect.TypeOf(&User{}))
-	return c
+func (c *UserCollection) Init(connection *mongo.Connection) {
+	c.BaseCollection = mongo.NewCollection(connection, c, "mazimotaBot", "users", reflect.TypeOf(&User{}))
+}
+
+func (c *UserCollection) GetIndexes() []mgo.Index {
+	return []mgo.Index{{
+		Key:        []string{"telegram_id"},
+		Background: false,
+		DropDups:   true,
+		Unique:     true,
+	}}
+}
+
+func (c *UserCollection) EnsureIndexes() error {
+	return c.BaseCollection.EnsureIndexes(c.GetIndexes())
 }
 
 func (c *UserCollection) FindOne(query bson.M) (obj *User, err error) {
 	obj = &User{}
-	err = c.Collection.FindOneUnsafe(query, obj)
+	err = c.BaseCollection.FindOneUnsafe(query, obj)
 	return
 }
 
 func (c *UserCollection) Insert(values ...*User) error {
-	return c.Collection.InsertUnsafe(values)
+	return c.BaseCollection.InsertUnsafe(values)
 }
 
 func New(collection *UserCollection) *User {
@@ -60,12 +71,14 @@ func New(collection *UserCollection) *User {
 	return m.Init(collection)
 }
 
-func NewCollection(connection *mongo.Connection) *UserCollection {
-	c := UserCollection{}
-	return c.Init(connection)
+func NewCollection(connection *mongo.Connection) (c *UserCollection) {
+	c = &UserCollection{}
+	c.Init(connection)
+	return
 }
 
-func NewCollectionDefault() *UserCollection {
-	c := UserCollection{}
-	return c.Init(mongo.DefaultConnection)
+func NewCollectionDefault() (c *UserCollection) {
+	c = &UserCollection{}
+	c.Init(mongo.DefaultConnection)
+	return
 }

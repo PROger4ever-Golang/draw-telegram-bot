@@ -12,7 +12,7 @@ type Model interface {
 }
 
 type BaseModel struct {
-	collection *Collection
+	collection *BaseCollection
 	model      Model
 
 	ID        bson.ObjectId `bson:"_id,omitempty"`
@@ -21,7 +21,7 @@ type BaseModel struct {
 	DeletedAt time.Time     `bson:"deleted_at,omitempty"`
 }
 
-func (m *BaseModel) Init(collection *Collection, value Model) *BaseModel {
+func (m *BaseModel) Init(collection *BaseCollection, value Model) *BaseModel {
 	m.collection = collection
 	m.model = value
 	return m
@@ -72,7 +72,7 @@ func (m *BaseModel) initializeCommons() *BaseModel {
 	return m
 }
 
-func NewModel(collection *Collection, value Model) (m *BaseModel) {
+func NewModel(collection *BaseCollection, value Model) (m *BaseModel) {
 	m = &BaseModel{}
 	return m.Init(collection, value)
 }
