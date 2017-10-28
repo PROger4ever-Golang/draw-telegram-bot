@@ -1,42 +1,78 @@
 package mongo
 
 import (
+	"time"
+
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-// type ModelId interface {
-// 	GetId() bson.ObjectId
-// }
-
-type Model struct {
-	collection *Collection
-	value      interface{}
-
-	ID bson.ObjectId `bson:"_id,omitempty"`
+type Model interface {
+	GetContentMap() bson.M //reflection can be used instead
 }
 
-func (m *Model) Init(collection *Collection, value interface{}) *Model {
+type BaseModel struct {
+	collection *Collection
+	model      Model
+
+	ID        bson.ObjectId `bson:"_id,omitempty"`
+	CreatedAt time.Time     `bson:"created_at,omitempty"`
+	UpdatedAt time.Time     `bson:"updated_at,omitempty"`
+	DeletedAt time.Time     `bson:"deleted_at,omitempty"`
+}
+
+func (m *BaseModel) Init(collection *Collection, value Model) *BaseModel {
 	m.collection = collection
-	m.value = value
+	m.model = value
 	return m
 }
 
-func (m *Model) Upsert(query *bson.M) (info *mgo.ChangeInfo, err error) {
-	if !m.ID.Valid() { //Empty
-		m.ID = bson.NewObjectId()
+func (m *BaseModel) GetContentMap() (theMap bson.M) {
+	theMap = m.model.GetContentMap() //unsorted map :(
+	if m.ID.Valid() {
+		theMap["_id"] = m.ID
 	}
-	return m.collection.UpsertUnsafe(query, m.value)
+	if !m.CreatedAt.IsZero() {
+		theMap["created_at"] = m.CreatedAt
+	}
+	if !m.UpdatedAt.IsZero() {
+		theMap["updated_at"] = m.UpdatedAt
+	}
+	if !m.DeletedAt.IsZero() {
+		theMap["deleted_at"] = m.DeletedAt
+	}
+	return theMap
 }
 
-func (m *Model) UpsertId() (info *mgo.ChangeInfo, err error) {
-	if !m.ID.Valid() { //Empty
-		m.ID = bson.NewObjectId()
-	}
-	return m.collection.UpsertIdUnsafe(m.ID, m.value)
+func (m *BaseModel) Upsert(query bson.M) (info *mgo.ChangeInfo, err error) {
+	theMap := m.initializeCommons().GetContentMap()
+	return m.collection.UpsertUnsafe(query, theMap)
 }
 
-func NewModel(collection *Collection, value interface{}) (m *Model) {
-	m = &Model{}
+func (m *BaseModel) UpsertId() (info *mgo.ChangeInfo, err error) {
+	theMap := m.initializeId().initializeCommons().GetContentMap()
+	return m.collection.UpsertIdUnsafe(m.ID, theMap)
+}
+
+func (m *BaseModel) initializeId() *BaseModel {
+	if !m.ID.Valid() {
+		m.ID = bson.NewObjectId()
+	}
+	return m
+}
+
+func (m *BaseModel) initializeCommons() *BaseModel {
+	t := time.Now()
+	if m.CreatedAt.IsZero() {
+		m.CreatedAt = t
+	}
+	if m.UpdatedAt.IsZero() {
+		m.UpdatedAt = t
+	}
+	return m
+}
+
+func NewModel(collection *Collection, value Model) (m *BaseModel) {
+	m = &BaseModel{}
 	return m.Init(collection, value)
 }

@@ -49,7 +49,7 @@ func (c *Collection) CheckTypes(values ...interface{}) {
 	}
 }
 
-func (c *Collection) FindOneUnsafe(query *bson.M, value interface{}) (err error) {
+func (c *Collection) FindOneUnsafe(query bson.M, value interface{}) (err error) {
 	//connection state can be checked and reestablished with timout
 	err = c.Connection.DB(c.DbName).C(c.Name).Find(query).One(value)
 	return
@@ -68,12 +68,12 @@ func (c *Collection) InsertSafe(values ...interface{}) (err error) {
 	return
 }
 
-func (c *Collection) UpsertUnsafe(query *bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
+func (c *Collection) UpsertUnsafe(query bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
 	//connection state can be checked and reestablished with timout
 	return c.Connection.DB(c.DbName).C(c.Name).Upsert(query, value)
 }
 
-func (c *Collection) UpsertSafe(query *bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
+func (c *Collection) UpsertSafe(query bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
 	//connection state can be checked and reestablished with timout
 	c.CheckType(value)
 	return c.Connection.DB(c.DbName).C(c.Name).Upsert(query, value)
@@ -90,12 +90,12 @@ func (c *Collection) UpsertIdSafe(id interface{}, value interface{}) (info *mgo.
 	return c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, value)
 }
 
-func (c *Collection) RemoveUnsafe(query *bson.M) error {
+func (c *Collection) RemoveUnsafe(query bson.M) error {
 	//connection state can be checked and reestablished with timout
 	return c.Connection.DB(c.DbName).C(c.Name).Remove(query)
 }
 
-func (c *Collection) RemoveAllUnsafe(query *bson.M) (err error) {
+func (c *Collection) RemoveAllUnsafe(query bson.M) (err error) {
 	//connection state can be checked and reestablished with timout
 	_, err = c.Connection.DB(c.DbName).C(c.Name).RemoveAll(query)
 	return

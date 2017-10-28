@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -13,7 +12,6 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
-	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/state"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
@@ -44,19 +42,21 @@ func main() {
 	//endregion
 
 	// A case of using models
-	uc := user.NewCollectionDefault()
-	us := user.New(uc)
-	us.TelegramID = 10555555
-	us.LastName = "LastName"
-	us.FirstName = "FirstName"
-	us.Username = "Username"
-	_, err = us.UpsertId()
-	common.PanicIfError(err, "user saving 1")
+	// uc := user.NewCollectionDefault()
+	// us := user.New(uc)
+	// us.TelegramID = 10555555
+	// us.LastName = "LastName"
+	// us.FirstName = "FirstName"
+	// us.Username = "Username"
+	// // fmt.Printf("\n\n1: %#v\n\n", us.BaseModel.GetContentMap())
+	// _, err = us.UpsertId()
+	// common.PanicIfError(err, "user saving 1")
 
-	us.LastName = "LastName Changed"
-	_, err = us.UpsertId()
-	common.PanicIfError(err, "user saving 2")
-	os.Exit(0)
+	// us.LastName = "LastName Changed"
+	// // fmt.Printf("2: %#v\n\n", us.BaseModel.GetContentMap()) //unsorted map :(
+	// _, err = us.UpsertId()
+	// common.PanicIfError(err, "user saving 2")
+	// os.Exit(0)
 
 	//region user api
 	uac := conf.UserApi

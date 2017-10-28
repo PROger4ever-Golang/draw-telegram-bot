@@ -22,7 +22,7 @@ func Save(state *tuapi.State) {
 	}
 	ss.Init(settingState.NewCollectionDefault())
 
-	_, err := ss.Upsert(&bson.M{
+	_, err := ss.Upsert(bson.M{
 		"name": "state",
 	})
 	common.PanicIfError(err, "saving bot state")

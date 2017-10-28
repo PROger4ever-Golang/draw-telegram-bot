@@ -2,28 +2,35 @@ package user
 
 import (
 	"reflect"
-	"time"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type User struct {
-	*mongo.Model `bson:"-"`
-	TelegramID   int `bson:"telegram_id"`
-	Username     string
-	Roles        []string
-	FirstName    string
-	LastName     string
-	Status       string
-	CreatedAt    time.Time `bson:"created_at,omitempty"`
-	UpdatedAt    time.Time `bson:"updated_at,omitempty"`
-	DeletedAt    time.Time `bson:"deleted_at,omitempty"`
+	*mongo.BaseModel `bson:"-"`
+	TelegramID       int `bson:"telegram_id"`
+	Username         string
+	Roles            []string
+	FirstName        string
+	LastName         string
+	Status           string
 }
 
-func (c *User) Init(collection *UserCollection) *User {
-	c.Model = mongo.NewModel(collection.Collection, c)
-	return c
+func (m *User) Init(collection *UserCollection) *User {
+	m.BaseModel = mongo.NewModel(collection.Collection, m)
+	return m
+}
+
+func (m *User) GetContentMap() bson.M {
+	return bson.M{
+		"telegram_id": m.TelegramID,
+		"username":    m.Username,
+		"roles":       m.Roles,
+		"firstname":   m.FirstName,
+		"lastname":    m.LastName,
+		"status":      m.Status,
+	}
 }
 
 type UserCollection struct {
@@ -38,7 +45,7 @@ func (c *UserCollection) Init(connection *mongo.Connection) *UserCollection {
 	return c
 }
 
-func (c *UserCollection) FindOne(query *bson.M) (obj *User, err error) {
+func (c *UserCollection) FindOne(query bson.M) (obj *User, err error) {
 	obj = &User{}
 	err = c.Collection.FindOneUnsafe(query, obj)
 	return

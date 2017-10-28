@@ -11,14 +11,21 @@ import (
 )
 
 type SettingState struct {
-	*mongo.Model
+	*mongo.BaseModel
 	Name  string
 	Value *StateSerializable
 }
 
-func (c *SettingState) Init(collection *SettingStateCollection) *SettingState {
-	c.Model = mongo.NewModel(collection.Collection, c)
-	return c
+func (m *SettingState) Init(collection *SettingStateCollection) *SettingState {
+	m.BaseModel = mongo.NewModel(collection.Collection, m)
+	return m
+}
+
+func (m *SettingState) GetContentMap() bson.M {
+	return bson.M{
+		"name":  m.Name,
+		"value": m.Value,
+	}
 }
 
 type SettingStateCollection struct {
@@ -33,7 +40,7 @@ func (c *SettingStateCollection) Init(connection *mongo.Connection) *SettingStat
 	return c
 }
 
-func (c *SettingStateCollection) Upsert(query *bson.M, value *SettingState) (info *mgo.ChangeInfo, err error) {
+func (c *SettingStateCollection) Upsert(query bson.M, value *SettingState) (info *mgo.ChangeInfo, err error) {
 	return c.Collection.UpsertUnsafe(query, value)
 }
 
