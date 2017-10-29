@@ -22,7 +22,7 @@ func PanicIfError(err error, message string) {
 }
 
 func RepairIfError(message string, data interface{}) {
-	if r := recover(); r != nil {
-		fmt.Fprint(os.Stderr, fmt.Errorf("Recovered while %v:\n%q\nThe data occured the panic: %q", message, r, data))
+	if err := recover(); err != nil {
+		fmt.Fprint(os.Stderr, fmt.Errorf("Recovered while %s:\n%q\nThe data occured the panic: %#v", message, err, data))
 	}
 }
