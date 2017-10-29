@@ -6,13 +6,18 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
+
+	"gopkg.in/mgo.v2"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"gopkg.in/mgo.v2/bson"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
@@ -56,7 +61,7 @@ func (r *Router) initCommands() {
 }
 
 func (r *Router) ProcessUpdate(update *tgbotapi.Update) {
-	defer common.RepairIfError("processing update", *update)
+	defer common.RepairIfError("processing update", update)
 
 	var msg *tgbotapi.Message
 	if update.Message != nil {
@@ -65,20 +70,48 @@ func (r *Router) ProcessUpdate(update *tgbotapi.Update) {
 		msg = update.ChannelPost
 	}
 
-	if len(msg.Text) > 0 {
+	if msg != nil && len(msg.Text) > 0 {
 		err := r.processMessage(update, msg.Chat, msg)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Expected error while processing message: %v\n", err)
 		}
 	}
 
-	// if msg.NewChatMembers != nil {
+	if msg.NewChatMembers != nil {
+		uc := user.NewCollectionDefault()
+		for _, tuser := range *msg.NewChatMembers {
+			chatMember, err := r.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
+				ChatID: msg.Chat.ID,
+				UserID: tuser.ID,
+			})
+			common.PanicIfError(err, "getting info about NewChatMembers")
+			u := user.User{
+				TelegramID: tuser.ID,
+				Username:   tuser.UserName,
+				LastName:   tuser.LastName,
+				FirstName:  tuser.LastName,
+				Status:     chatMember.Status,
+			}
+			u.Init(uc)
+			err = uc.InsertOneOrUpdateModel(&u)
+			common.PanicIfError(err, "saving NewChatMembers to db")
+		}
+	}
 
-	// }
-
-	// if msg.LeftChatMember != nil {
-
-	// }
+	if msg.LeftChatMember != nil {
+		err := user.NewCollectionDefault().UpdateInterface(bson.M{
+			"telegram_id": msg.LeftChatMember.ID,
+		}, bson.M{
+			"$set": bson.M{
+				"status":     "left",
+				"deleted_at": time.Now(),
+			},
+		})
+		if err == mgo.ErrNotFound {
+			err = nil
+		}
+		common.PanicIfError(err, "updating LeftChatMember in db")
+	}
 }
 
 func (r *Router) processMessage(update *tgbotapi.Update, chat *tgbotapi.Chat, msg *tgbotapi.Message) error {
