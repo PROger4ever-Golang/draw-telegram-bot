@@ -13,7 +13,6 @@ type User struct {
 	*mongo.BaseModel `bson:"-"`
 	TelegramID       int `bson:"telegram_id"`
 	Username         string
-	Roles            []string
 	FirstName        string
 	LastName         string
 	Status           string
@@ -24,14 +23,57 @@ func (m *User) Init(collection *UserCollection) *User {
 	return m
 }
 
+func (m *User) GetBaseModel() *mongo.BaseModel {
+	return m.BaseModel
+}
+
+func (m *User) CleanModel() {
+	m.TelegramID = 0
+	m.Username = ""
+	m.FirstName = ""
+	m.LastName = ""
+	m.Status = ""
+}
+
 func (m *User) GetContentMap() bson.M {
 	return bson.M{
 		"telegram_id": m.TelegramID,
 		"username":    m.Username,
-		"roles":       m.Roles,
 		"firstname":   m.FirstName,
 		"lastname":    m.LastName,
 		"status":      m.Status,
+	}
+}
+
+func (m *User) SetContentFromMap(theMap bson.M) {
+	if telegramIDI, okM := theMap["telegram_id"]; okM {
+		if telegramID, okC := telegramIDI.(int); okC {
+			m.TelegramID = telegramID
+		}
+	}
+
+	if UsernameI, okM := theMap["username"]; okM {
+		if Username, okC := UsernameI.(string); okC {
+			m.Username = Username
+		}
+	}
+
+	if FirstNameI, okM := theMap["firstname"]; okM {
+		if FirstName, okC := FirstNameI.(string); okC {
+			m.FirstName = FirstName
+		}
+	}
+
+	if LastNameI, okM := theMap["lastname"]; okM {
+		if LastName, okC := LastNameI.(string); okC {
+			m.LastName = LastName
+		}
+	}
+
+	if StatusI, okM := theMap["status"]; okM {
+		if Status, okC := StatusI.(string); okC {
+			m.Status = Status
+		}
 	}
 }
 
@@ -58,14 +100,28 @@ func (c *UserCollection) EnsureIndexes() error {
 
 func (c *UserCollection) FindOne(query bson.M) (obj *User, err error) {
 	obj = &User{}
-	err = c.BaseCollection.FindOneUnsafe(query, obj)
+	err = c.BaseCollection.FindOneInterface(query, obj)
 	return
 }
 
 func (c *UserCollection) Insert(values ...*User) error {
-	return c.BaseCollection.InsertUnsafe(values)
+	models := c.toModels(values)
+	return c.BaseCollection.InsertModel(models...)
 }
 
+func (c *UserCollection) InsertOneOrUpdateModel(value *User) error {
+	return c.BaseCollection.InsertOneOrUpdateModel(bson.M{
+		"telegram_id": value.TelegramID,
+	}, value)
+}
+
+func (c *UserCollection) toModels(values []*User) (models []mongo.Model) {
+	models = make([]mongo.Model, 0, len(values))
+	for _, v := range values {
+		models = append(models, v)
+	}
+	return
+}
 func New(collection *UserCollection) *User {
 	m := User{}
 	return m.Init(collection)

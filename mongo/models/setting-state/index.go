@@ -21,10 +21,33 @@ func (m *SettingState) Init(collection *SettingStateCollection) *SettingState {
 	return m
 }
 
+func (m *SettingState) GetBaseModel() *mongo.BaseModel {
+	return m.BaseModel
+}
+
+func (m *SettingState) CleanModel() {
+	m.Name = ""
+	m.Value = nil
+}
+
 func (m *SettingState) GetContentMap() bson.M {
 	return bson.M{
 		"name":  m.Name,
 		"value": m.Value,
+	}
+}
+
+func (m *SettingState) SetContentFromMap(theMap bson.M) {
+	if nameI, okM := theMap["name"]; okM {
+		if name, okC := nameI.(string); okC {
+			m.Name = name
+		}
+	}
+
+	if valueI, okM := theMap["value"]; okM {
+		if value, okC := valueI.(*StateSerializable); okC { //TODO: check casting: pointer or value?
+			m.Value = value
+		}
 	}
 }
 
@@ -45,7 +68,7 @@ func (c *SettingStateCollection) EnsureIndexes() error {
 }
 
 func (c *SettingStateCollection) Upsert(query bson.M, value *SettingState) (info *mgo.ChangeInfo, err error) {
-	return c.BaseCollection.UpsertUnsafe(query, value)
+	return c.BaseCollection.UpsertInterface(query, value)
 }
 
 func (ss *SettingState) DecodeValue() *tuapi.State {

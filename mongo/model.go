@@ -8,7 +8,10 @@ import (
 )
 
 type Model interface {
-	GetContentMap() bson.M //reflection can be used instead
+	GetBaseModel() *BaseModel
+	GetContentMap() bson.M //reflection and Unmarshal can be used instead
+	CleanModel()
+	SetContentFromMap(theMap bson.M)
 }
 
 type BaseModel struct {
@@ -21,9 +24,25 @@ type BaseModel struct {
 	DeletedAt time.Time     `bson:"deleted_at,omitempty"`
 }
 
-func (m *BaseModel) Init(collection *BaseCollection, value Model) *BaseModel {
+func (m *BaseModel) Init(collection *BaseCollection, model Model) *BaseModel {
 	m.collection = collection
-	m.model = value
+	m.model = model
+	return m
+}
+
+func (m *BaseModel) InitializeId() *BaseModel {
+	if !m.ID.Valid() {
+		m.ID = bson.NewObjectId()
+	}
+	return m
+}
+
+func (m *BaseModel) InitializeCommons() *BaseModel {
+	t := time.Now()
+	if m.CreatedAt.IsZero() {
+		m.CreatedAt = t
+	}
+	m.UpdatedAt = t
 	return m
 }
 
@@ -44,35 +63,47 @@ func (m *BaseModel) GetContentMap() (theMap bson.M) {
 	return theMap
 }
 
+func (m *BaseModel) SetContentFromMap(theMap bson.M) *BaseModel {
+	m.model.CleanModel()
+	m.model.SetContentFromMap(theMap)
+
+	if idI, okM := theMap["_id"]; okM {
+		if idS, okC := idI.(string); okC && bson.IsObjectIdHex(idS) {
+			m.ID = bson.ObjectId(idS)
+		}
+	}
+
+	if createdAtI, okM := theMap["created_date"]; okM {
+		if createdAt, okC := createdAtI.(time.Time); okC {
+			m.CreatedAt = createdAt
+		}
+	}
+
+	if createdAtI, okM := theMap["created_date"]; okM {
+		if createdAt, okC := createdAtI.(time.Time); okC {
+			m.CreatedAt = createdAt
+		}
+	}
+
+	if deletedAtI, okM := theMap["deleted_date"]; okM {
+		if deletedAt, okC := deletedAtI.(time.Time); okC {
+			m.CreatedAt = deletedAt
+		}
+	}
+	return m
+}
+
 func (m *BaseModel) Upsert(query bson.M) (info *mgo.ChangeInfo, err error) {
-	theMap := m.initializeCommons().GetContentMap()
-	return m.collection.UpsertUnsafe(query, theMap)
+	theMap := m.InitializeCommons().GetContentMap()
+	return m.collection.UpsertInterface(query, theMap)
 }
 
 func (m *BaseModel) UpsertId() (info *mgo.ChangeInfo, err error) {
-	theMap := m.initializeId().initializeCommons().GetContentMap()
-	return m.collection.UpsertIdUnsafe(m.ID, theMap)
+	theMap := m.InitializeId().InitializeCommons().GetContentMap()
+	return m.collection.UpsertIdInterface(m.ID, theMap)
 }
 
-func (m *BaseModel) initializeId() *BaseModel {
-	if !m.ID.Valid() {
-		m.ID = bson.NewObjectId()
-	}
-	return m
-}
-
-func (m *BaseModel) initializeCommons() *BaseModel {
-	t := time.Now()
-	if m.CreatedAt.IsZero() {
-		m.CreatedAt = t
-	}
-	if m.UpdatedAt.IsZero() {
-		m.UpdatedAt = t
-	}
-	return m
-}
-
-func NewModel(collection *BaseCollection, value Model) (m *BaseModel) {
+func NewModel(collection *BaseCollection, model Model) (m *BaseModel) {
 	m = &BaseModel{}
-	return m.Init(collection, value)
+	return m.Init(collection, model)
 }

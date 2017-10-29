@@ -3,6 +3,7 @@ package mongo
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -48,8 +49,8 @@ func (c *BaseCollection) EnsureIndexes(indexes []mgo.Index) (err error) {
 	return err
 }
 
-func (c *BaseCollection) CheckType(value interface{}) {
-	valueType := reflect.TypeOf(value)
+func (c *BaseCollection) CheckType(model Model) {
+	valueType := reflect.TypeOf(model)
 	if c.Type != valueType {
 		panic(&TypeMismatch{
 			ExpectedType: c.Type,
@@ -58,61 +59,116 @@ func (c *BaseCollection) CheckType(value interface{}) {
 	}
 }
 
-func (c *BaseCollection) CheckTypes(values ...interface{}) {
-	for v := range values {
+func (c *BaseCollection) CheckTypes(values []Model) {
+	for _, v := range values {
 		c.CheckType(v)
 	}
 }
 
-func (c *BaseCollection) FindOneUnsafe(query bson.M, value interface{}) (err error) {
-	//connection state can be checked and reestablished with timout
+func (c *BaseCollection) FindOneInterface(query bson.M, value interface{}) (err error) {
 	err = c.Connection.DB(c.DbName).C(c.Name).Find(query).One(value)
 	return
 }
 
-func (c *BaseCollection) InsertUnsafe(values ...interface{}) (err error) {
-	//connection state can be checked and reestablished with timout
+func (c *BaseCollection) InsertInterface(values ...interface{}) (err error) {
 	err = c.Connection.DB(c.DbName).C(c.Name).Insert(values)
 	return
 }
 
-func (c *BaseCollection) InsertSafe(values ...interface{}) (err error) {
-	//connection state can be checked and reestablished with timout
-	c.CheckTypes(values)
-	err = c.Connection.DB(c.DbName).C(c.Name).Insert(values)
+func (c *BaseCollection) InsertModel(models ...Model) (err error) {
+	c.CheckTypes(models)
+	maps := c.getModelMaps(models)
+	err = c.Connection.DB(c.DbName).C(c.Name).Insert(maps...)
 	return
 }
 
-func (c *BaseCollection) UpsertUnsafe(query bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
-	//connection state can be checked and reestablished with timout
+func (c *BaseCollection) InsertOneOrUpdateModel(query bson.M, model Model) (err error) {
+	c.CheckType(model)
+
+	bm := model.GetBaseModel()
+	bm.InitializeId().InitializeCommons()
+	theMap := bm.GetContentMap()
+
+	err = c.Connection.DB(c.DbName).C(c.Name).Insert(theMap)
+	if mgo.IsDup(err) {
+		bm.ID = bson.ObjectId("")
+		bm.CreatedAt = time.Time{}
+
+		theMap = bm.GetContentMap()
+		newMap := bson.M{}
+		_, err := c.Connection.DB(c.DbName).C(c.Name).Find(query).Apply(mgo.Change{
+			Update:    theMap,
+			ReturnNew: true,
+		}, newMap)
+		if err != nil {
+			return err
+		}
+		bm.SetContentFromMap(newMap)
+		bm.model.SetContentFromMap(newMap)
+	}
+	return
+}
+
+func (c *BaseCollection) UpdateInterface(query bson.M, value interface{}) (err error) {
+	return c.Connection.DB(c.DbName).C(c.Name).Update(query, value)
+}
+
+func (c *BaseCollection) UpdateModel(query bson.M, model Model) (err error) {
+	c.CheckType(model)
+	theMap := c.getModelMap(model)
+	return c.Connection.DB(c.DbName).C(c.Name).Update(query, theMap)
+}
+
+func (c *BaseCollection) UpdateIdInterface(id interface{}, value interface{}) (err error) {
+	return c.Connection.DB(c.DbName).C(c.Name).UpdateId(id, value)
+}
+
+func (c *BaseCollection) UpdateIdModel(id interface{}, model Model) (err error) {
+	c.CheckType(model)
+	theMap := c.getModelMap(model)
+	return c.Connection.DB(c.DbName).C(c.Name).UpdateId(id, theMap)
+}
+
+func (c *BaseCollection) UpsertInterface(query bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
 	return c.Connection.DB(c.DbName).C(c.Name).Upsert(query, value)
 }
 
-func (c *BaseCollection) UpsertSafe(query bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
-	//connection state can be checked and reestablished with timout
-	c.CheckType(value)
-	return c.Connection.DB(c.DbName).C(c.Name).Upsert(query, value)
+func (c *BaseCollection) UpsertModel(query bson.M, model Model) (info *mgo.ChangeInfo, err error) {
+	c.CheckType(model)
+	theMap := c.getModelMap(model)
+	return c.Connection.DB(c.DbName).C(c.Name).Upsert(query, theMap)
 }
 
-func (c *BaseCollection) UpsertIdUnsafe(id interface{}, value interface{}) (info *mgo.ChangeInfo, err error) {
-	//connection state can be checked and reestablished with timout
+func (c *BaseCollection) UpsertIdInterface(id interface{}, value interface{}) (info *mgo.ChangeInfo, err error) {
 	return c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, value)
 }
 
-func (c *BaseCollection) UpsertIdSafe(id interface{}, value interface{}) (info *mgo.ChangeInfo, err error) {
-	//connection state can be checked and reestablished with timout
-	c.CheckType(value)
-	return c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, value)
+func (c *BaseCollection) UpsertIdModel(id interface{}, model Model) (info *mgo.ChangeInfo, err error) {
+	c.CheckType(model)
+	theMap := c.getModelMap(model)
+	return c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, theMap)
 }
 
-func (c *BaseCollection) RemoveUnsafe(query bson.M) error {
-	//connection state can be checked and reestablished with timout
+func (c *BaseCollection) RemoveInterface(query bson.M) error {
 	return c.Connection.DB(c.DbName).C(c.Name).Remove(query)
 }
 
-func (c *BaseCollection) RemoveAllUnsafe(query bson.M) (err error) {
-	//connection state can be checked and reestablished with timout
+func (c *BaseCollection) RemoveAllInterface(query bson.M) (err error) {
 	_, err = c.Connection.DB(c.DbName).C(c.Name).RemoveAll(query)
+	return
+}
+
+func (c *BaseCollection) getModelMap(model Model) bson.M {
+	bm := model.GetBaseModel()
+	bm.InitializeId().InitializeCommons()
+	return bm.GetContentMap()
+}
+
+func (c *BaseCollection) getModelMaps(models []Model) (maps []interface{}) {
+	maps = make([]interface{}, 0, len(models))
+	for _, m := range models {
+		maps = append(maps, c.getModelMap(m))
+	}
 	return
 }
 
