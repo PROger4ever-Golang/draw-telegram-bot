@@ -62,6 +62,10 @@ func (c *PlayHandler) Execute(msg *tgbotapi.Message, params []string) error {
 	uc := user.NewCollectionDefault()
 	for {
 		u, err := uc.PipeOne(playPipeline)
+		if err == mgo.ErrNotFound {
+			err := errors.New("Нет участников канала, подписавшихся у бота на розыгрыш.\nРозыгрыш среди НИКОГО - не смешите мои байтики")
+			return utils.SendBotError(c.Bot, int64(msg.Chat.ID), err)
+		}
 		if err != nil {
 			return err
 		}
@@ -71,10 +75,6 @@ func (c *PlayHandler) Execute(msg *tgbotapi.Message, params []string) error {
 			SuperGroupUsername: "@" + c.Conf.Management.ChannelUsername,
 			UserID:             u.TelegramID,
 		})
-		if err == mgo.ErrNotFound {
-			err := errors.New("Нет участников канала, подписавшихся у бота на розыгрыш.\nРозыгрыш среди НИКОГО - не смешите мои байтики")
-			return utils.SendBotError(c.Bot, int64(msg.Chat.ID), err)
-		}
 		if err != nil {
 			return err
 		}
