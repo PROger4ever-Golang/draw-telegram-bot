@@ -6,18 +6,13 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
-
-	"gopkg.in/mgo.v2"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"gopkg.in/mgo.v2/bson"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
@@ -25,10 +20,11 @@ var cmdRegexp = regexp.MustCompile("^/([A-Za-z0-9_-]+)(@([A-Za-z0-9_-]+))? ?(.*)
 
 type CommandHandler interface {
 	GetName() string
+	IsForOwnersOnly() bool
 	GetParamsCount() int
 
 	Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI)
-	Execute(chat *tgbotapi.Chat, params []string) error
+	Execute(msg *tgbotapi.Message, params []string) error
 }
 
 type Router struct {
@@ -49,14 +45,15 @@ func (r *Router) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.Bot
 
 func (r *Router) initCommands() {
 	r.Handlers = []CommandHandler{
-		&handlers.CompleteLoginWithCodeHandler{},
+		&handlers.AddMeHandler{},
 		&handlers.PlayHandler{},
-		&handlers.StartLoginHandler{},
+		// &handlers.StartLoginHandler{},
+		// &handlers.CompleteLoginWithCodeHandler{},
 	}
 	r.HandlersMap = make(map[string]CommandHandler)
 	for _, h := range r.Handlers {
 		h.Init(r.Conf, r.Tool, r.Bot)
-		r.HandlersMap[h.GetName()] = h
+		r.HandlersMap[strings.ToLower(h.GetName())] = h
 	}
 }
 
@@ -71,50 +68,14 @@ func (r *Router) ProcessUpdate(update *tgbotapi.Update) {
 	}
 
 	if msg != nil && len(msg.Text) > 0 {
-		err := r.processMessage(update, msg.Chat, msg)
+		err := r.processMessage(msg)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Expected error while processing message: %v\n", err)
 		}
 	}
-
-	if msg.NewChatMembers != nil {
-		uc := user.NewCollectionDefault()
-		for _, tuser := range *msg.NewChatMembers {
-			chatMember, err := r.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
-				ChatID: msg.Chat.ID,
-				UserID: tuser.ID,
-			})
-			common.PanicIfError(err, "getting info about NewChatMembers")
-			u := user.User{
-				TelegramID: tuser.ID,
-				Username:   tuser.UserName,
-				LastName:   tuser.LastName,
-				FirstName:  tuser.LastName,
-				Status:     chatMember.Status,
-			}
-			u.Init(uc)
-			err = uc.InsertOneOrUpdateModel(&u)
-			common.PanicIfError(err, "saving NewChatMembers to db")
-		}
-	}
-
-	if msg.LeftChatMember != nil {
-		err := user.NewCollectionDefault().UpdateInterface(bson.M{
-			"telegram_id": msg.LeftChatMember.ID,
-		}, bson.M{
-			"$set": bson.M{
-				"status":     "left",
-				"deleted_at": time.Now(),
-			},
-		})
-		if err == mgo.ErrNotFound {
-			err = nil
-		}
-		common.PanicIfError(err, "updating LeftChatMember in db")
-	}
 }
 
-func (r *Router) processMessage(update *tgbotapi.Update, chat *tgbotapi.Chat, msg *tgbotapi.Message) error {
+func (r *Router) processMessage(msg *tgbotapi.Message) error {
 	txt := msg.Text
 	cmdSubmatches := cmdRegexp.FindStringSubmatch(txt)
 	if len(cmdSubmatches) == 0 {
@@ -127,27 +88,30 @@ func (r *Router) processMessage(update *tgbotapi.Update, chat *tgbotapi.Chat, ms
 	if cmdBot != "" && cmdBot != r.Bot.Self.UserName {
 		return nil
 	}
-
-	fmt.Printf("Got cmd for me: %v, params: %q\n", cmdName, cmdParams)
-	if msg.From != nil {
-		fmt.Printf("From: id%d %s <%s %s>\n", msg.From.ID, msg.From.UserName, msg.From.FirstName, msg.From.LastName)
-		if msg.From.UserName != r.Conf.Management.OwnerUsername {
-			return utils.SendBotError(r.Bot, int64(msg.Chat.ID), errors.New("Ты не мой ПОВЕЛИТЕЛЬ! Я тебя не слушаюсь!"))
-		}
-	}
-	return r.processCmd(update, chat, cmdName, cmdParams)
+	return r.processCmd(msg, cmdName, cmdParams)
 }
 
-func (r *Router) processCmd(update *tgbotapi.Update, chat *tgbotapi.Chat, name string, params []string) error {
-	h, hFound := r.HandlersMap[name]
-	if !hFound {
-		err := fmt.Errorf("Неизвестная команда: %v", name)
-		return utils.SendBotError(r.Bot, int64(chat.ID), err)
-	}
-	if len(params) != h.GetParamsCount() {
-		err := fmt.Errorf("Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsCount())
-		return utils.SendBotError(r.Bot, int64(chat.ID), err)
+func (r *Router) processCmd(msg *tgbotapi.Message, name string, params []string) error {
+	fmt.Printf("Got cmd for me: %v, params: %q\n  at chat @%s %d\n", name, params, msg.Chat.UserName, msg.Chat.ID)
+	if msg.From != nil {
+		fmt.Printf("  from: id%d %s <%s %s>\n", msg.From.ID, msg.From.UserName, msg.From.FirstName, msg.From.LastName)
 	}
 
-	return h.Execute(chat, params)
+	h, hFound := r.HandlersMap[strings.ToLower(name)]
+	if !hFound {
+		err := fmt.Errorf("Неизвестная команда: %v", name)
+		return utils.SendBotError(r.Bot, int64(msg.Chat.ID), err)
+	}
+
+	if h.IsForOwnersOnly() && (msg.From == nil || msg.From.UserName != r.Conf.Management.OwnerUsername) {
+		err := errors.New("Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
+		return utils.SendBotError(r.Bot, int64(msg.Chat.ID), err)
+	}
+
+	if len(params) != h.GetParamsCount() {
+		err := fmt.Errorf("Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsCount())
+		return utils.SendBotError(r.Bot, int64(msg.Chat.ID), err)
+	}
+
+	return h.Execute(msg, params)
 }

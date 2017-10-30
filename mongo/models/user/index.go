@@ -27,6 +27,10 @@ func (m *User) GetBaseModel() *mongo.BaseModel {
 	return m.BaseModel
 }
 
+func (m *User) SetBaseModel(bm *mongo.BaseModel) {
+	m.BaseModel = bm
+}
+
 func (m *User) CleanModel() {
 	m.TelegramID = 0
 	m.Username = ""
@@ -100,7 +104,8 @@ func (c *UserCollection) EnsureIndexes() error {
 
 func (c *UserCollection) FindOne(query bson.M) (obj *User, err error) {
 	obj = &User{}
-	err = c.BaseCollection.FindOneInterface(query, obj)
+	obj.Init(c)
+	err = c.BaseCollection.FindOneModel(query, obj)
 	return
 }
 
@@ -109,10 +114,17 @@ func (c *UserCollection) Insert(values ...*User) error {
 	return c.BaseCollection.InsertModel(models...)
 }
 
-func (c *UserCollection) InsertOneOrUpdateModel(value *User) error {
+func (c *UserCollection) InsertOneOrUpdateModel(value *User) (isUpdated bool, err error) {
 	return c.BaseCollection.InsertOneOrUpdateModel(bson.M{
 		"telegram_id": value.TelegramID,
 	}, value)
+}
+
+func (c *UserCollection) PipeOne(pipeline interface{}) (obj *User, err error) {
+	obj = &User{}
+	obj.Init(c)
+	err = c.BaseCollection.PipeOneModel(pipeline, obj)
+	return
 }
 
 func (c *UserCollection) toModels(values []*User) (models []mongo.Model) {

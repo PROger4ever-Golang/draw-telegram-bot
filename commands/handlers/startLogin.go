@@ -20,6 +20,10 @@ func (c *StartLoginHandler) GetName() string {
 	return "startLogin"
 }
 
+func (c *StartLoginHandler) IsForOwnersOnly() bool {
+	return true
+}
+
 func (c *StartLoginHandler) GetParamsCount() int {
 	return 1
 }
@@ -30,13 +34,13 @@ func (c *StartLoginHandler) Init(conf *config.Config, tool *userapi.Tool, bot *t
 	c.Tool = tool
 }
 
-func (c *StartLoginHandler) Execute(chat *tgbotapi.Chat, params []string) error {
+func (c *StartLoginHandler) Execute(msg *tgbotapi.Message, params []string) error {
 	err := c.Tool.StartLogin(params[0])
 	if err == nil {
 		resp := fmt.Sprintf("Отправь мне пришедший код, вставив в него минус:\n```\n/completeLoginWithCode -\n```")
-		err = utils.SendBotMessage(c.Bot, int64(chat.ID), resp)
+		err = utils.SendBotMessage(c.Bot, int64(msg.Chat.ID), resp, true)
 	} else {
-		err = utils.SendBotError(c.Bot, int64(chat.ID), err)
+		err = utils.SendBotError(c.Bot, int64(msg.Chat.ID), err)
 	}
 	return err
 }

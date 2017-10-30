@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"errors"
 	"time"
 
 	mgo "gopkg.in/mgo.v2"
@@ -9,6 +10,8 @@ import (
 
 type Model interface {
 	GetBaseModel() *BaseModel
+	SetBaseModel(bm *BaseModel)
+
 	GetContentMap() bson.M //reflection and Unmarshal can be used instead
 	CleanModel()
 	SetContentFromMap(theMap bson.M)
@@ -68,8 +71,8 @@ func (m *BaseModel) SetContentFromMap(theMap bson.M) *BaseModel {
 	m.model.SetContentFromMap(theMap)
 
 	if idI, okM := theMap["_id"]; okM {
-		if idS, okC := idI.(string); okC && bson.IsObjectIdHex(idS) {
-			m.ID = bson.ObjectId(idS)
+		if id, okC := idI.(bson.ObjectId); okC {
+			m.ID = id
 		}
 	}
 
@@ -101,6 +104,13 @@ func (m *BaseModel) Upsert(query bson.M) (info *mgo.ChangeInfo, err error) {
 func (m *BaseModel) UpsertId() (info *mgo.ChangeInfo, err error) {
 	theMap := m.InitializeId().InitializeCommons().GetContentMap()
 	return m.collection.UpsertIdInterface(m.ID, theMap)
+}
+
+func (m *BaseModel) RemoveId() (err error) {
+	if !m.ID.Valid() {
+		return errors.New("Model's ID isn't set")
+	}
+	return m.collection.RemoveIdInterface(m.ID)
 }
 
 func NewModel(collection *BaseCollection, model Model) (m *BaseModel) {

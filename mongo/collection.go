@@ -70,6 +70,13 @@ func (c *BaseCollection) FindOneInterface(query bson.M, value interface{}) (err 
 	return
 }
 
+func (c *BaseCollection) FindOneModel(query bson.M, model Model) (err error) {
+	dataMap := bson.M{}
+	err = c.Connection.DB(c.DbName).C(c.Name).Find(query).One(dataMap)
+	model.GetBaseModel().SetContentFromMap(dataMap)
+	return
+}
+
 func (c *BaseCollection) InsertInterface(values ...interface{}) (err error) {
 	err = c.Connection.DB(c.DbName).C(c.Name).Insert(values)
 	return
@@ -82,7 +89,7 @@ func (c *BaseCollection) InsertModel(models ...Model) (err error) {
 	return
 }
 
-func (c *BaseCollection) InsertOneOrUpdateModel(query bson.M, model Model) (err error) {
+func (c *BaseCollection) InsertOneOrUpdateModel(query bson.M, model Model) (isUpdated bool, err error) {
 	c.CheckType(model)
 
 	bm := model.GetBaseModel()
@@ -90,21 +97,23 @@ func (c *BaseCollection) InsertOneOrUpdateModel(query bson.M, model Model) (err 
 	theMap := bm.GetContentMap()
 
 	err = c.Connection.DB(c.DbName).C(c.Name).Insert(theMap)
-	if mgo.IsDup(err) {
+	isUpdated = mgo.IsDup(err)
+	if isUpdated {
 		bm.ID = bson.ObjectId("")
 		bm.CreatedAt = time.Time{}
 
 		theMap = bm.GetContentMap()
 		newMap := bson.M{}
-		_, err := c.Connection.DB(c.DbName).C(c.Name).Find(query).Apply(mgo.Change{
-			Update:    theMap,
+		_, err = c.Connection.DB(c.DbName).C(c.Name).Find(query).Apply(mgo.Change{
+			Update: bson.M{
+				"$set": theMap,
+			},
 			ReturnNew: true,
 		}, newMap)
 		if err != nil {
-			return err
+			return false, err
 		}
 		bm.SetContentFromMap(newMap)
-		bm.model.SetContentFromMap(newMap)
 	}
 	return
 }
@@ -153,11 +162,25 @@ func (c *BaseCollection) RemoveInterface(query bson.M) error {
 	return c.Connection.DB(c.DbName).C(c.Name).Remove(query)
 }
 
+func (c *BaseCollection) RemoveIdInterface(id bson.ObjectId) error {
+	return c.Connection.DB(c.DbName).C(c.Name).RemoveId(id)
+}
+
 func (c *BaseCollection) RemoveAllInterface(query bson.M) (err error) {
 	_, err = c.Connection.DB(c.DbName).C(c.Name).RemoveAll(query)
 	return
 }
 
+func (c *BaseCollection) PipeInterface(pipeline interface{}) *mgo.Pipe {
+	return c.Connection.DB(c.DbName).C(c.Name).Pipe(pipeline)
+}
+
+func (c *BaseCollection) PipeOneModel(pipeline interface{}, model Model) (err error) {
+	dataMap := bson.M{}
+	err = c.Connection.DB(c.DbName).C(c.Name).Pipe(pipeline).One(dataMap)
+	model.GetBaseModel().SetContentFromMap(dataMap)
+	return
+}
 func (c *BaseCollection) getModelMap(model Model) bson.M {
 	bm := model.GetBaseModel()
 	bm.InitializeId().InitializeCommons()

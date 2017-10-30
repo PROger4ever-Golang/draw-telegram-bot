@@ -3,19 +3,31 @@ package handlers
 import (
 	"bytes"
 	"errors"
-	"fmt"
-	"math"
-	"math/rand"
-	"os"
-	"time"
 
-	"github.com/PROger4ever/telegramapi/mtproto"
+	"gopkg.in/mgo.v2"
+
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"gopkg.in/mgo.v2/bson"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
+	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
+
+var playPipeline = []bson.M{{
+	"$match": bson.M{
+		"username": bson.M{
+			// "$exists": true,
+			"$ne": "",
+		},
+		"status": "member",
+	},
+}, {
+	"$sample": bson.M{
+		"size": 1,
+	},
+}}
 
 type PlayHandler struct {
 	Bot  *tgbotapi.BotAPI
@@ -25,6 +37,10 @@ type PlayHandler struct {
 
 func (c *PlayHandler) GetName() string {
 	return "play"
+}
+
+func (c *PlayHandler) IsForOwnersOnly() bool {
+	return false
 }
 
 func (c *PlayHandler) GetParamsCount() int {
@@ -37,89 +53,46 @@ func (c *PlayHandler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotap
 	c.Tool = tool
 }
 
-func (c *PlayHandler) Execute(chat *tgbotapi.Chat, params []string) error {
-	if chat.UserName != c.Conf.Management.ChannelUsername {
-		return utils.SendBotError(c.Bot, int64(chat.ID), errors.New("Розыгрыши недоступны в этом чате"))
+func (c *PlayHandler) Execute(msg *tgbotapi.Message, params []string) error {
+	if msg.Chat.UserName != c.Conf.Management.ChannelUsername {
+		err := errors.New("Розыгрыши недоступны в этом чате")
+		return utils.SendBotError(c.Bot, int64(msg.Chat.ID), err)
 	}
 
-	r, err := c.Tool.ContactsResolveUsername(chat.UserName)
-	if err != nil {
-		return utils.SendError(c.Tool, c.Bot, int64(chat.ID), err)
-	}
-	channelInfo := r.Chats[0].(*mtproto.TLChannel)
-
-	userTypesAdmins, err := c.Tool.ChannelsGetParticipants(channelInfo.ID, channelInfo.AccessHash, &mtproto.TLChannelParticipantsAdmins{},
-		0, math.MaxInt32)
-	if err != nil {
-		return utils.SendError(c.Tool, c.Bot, int64(chat.ID), err)
-	}
-	admins := userapi.UserTypesToUsers(&userTypesAdmins.Users)
-	adminsMap := map[int]*mtproto.TLUser{}
-	for _, admin := range *admins {
-		adminsMap[admin.ID] = admin
-	}
-
-	userTypesAll, err := c.Tool.ChannelsGetParticipants(channelInfo.ID, channelInfo.AccessHash, &mtproto.TLChannelParticipantsRecent{},
-		0, math.MaxInt32)
-	if err != nil {
-		return utils.SendError(c.Tool, c.Bot, int64(chat.ID), err)
-	}
-	usersAll := userapi.UserTypesToUsers(&userTypesAll.Users)
-
-	uAdmins := 0
-	uBots := 0
-	uRuleBreakers := 0
-	uParticipants := []*mtproto.TLUser{}
-	for _, user := range *usersAll {
-		_, isAdmin := adminsMap[user.ID]
-		isBot := user.Bot()
-		isRuleBreaker := (user.Username == "")
-		if isAdmin {
-			uAdmins++
+	uc := user.NewCollectionDefault()
+	for {
+		u, err := uc.PipeOne(playPipeline)
+		if err != nil {
+			return err
 		}
-		if isBot {
-			uBots++
+
+		// 2. Обновляем данные пользователя
+		chatMember, err := c.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
+			SuperGroupUsername: "@" + c.Conf.Management.ChannelUsername,
+			UserID:             u.TelegramID,
+		})
+		if err == mgo.ErrNotFound {
+			err := errors.New("Нет участников канала, подписавшихся у бота на розыгрыш.\nРозыгрыш среди НИКОГО - не смешите мои байтики")
+			return utils.SendBotError(c.Bot, int64(msg.Chat.ID), err)
 		}
-		if isRuleBreaker {
-			uRuleBreakers++
+		if err != nil {
+			return err
 		}
-		if !isAdmin && !isBot && !isRuleBreaker {
-			uParticipants = append(uParticipants, user)
+
+		// 3. Нет Username? Не подписан на канал? - удаляем в DB, continue
+		if chatMember.User.UserName == "" || chatMember.Status != "member" {
+			err = u.RemoveId()
+			if err != nil {
+				return err
+			}
+			continue
 		}
+
+		// 4. Объявляем победителя, break for
+		bufferBot := bytes.Buffer{}
+		bufferBot.WriteString("Итак, выигрывает...\n")
+		bufferBot.WriteString(utils.FormatUserDog(u))
+		bufferBot.WriteString("\nСпасибо всем за участие!")
+		return utils.SendBotMessage(c.Bot, int64(msg.Chat.ID), bufferBot.String(), false)
 	}
-
-	bufferSelf := bytes.Buffer{}
-	bufferSelf.WriteString(fmt.Sprintf("Перед розыгрышем.\nПользователей на канале: __%d__\n**Админы:** __%d__\n", len(*usersAll), uAdmins))
-	//utils.FormatUsers(&uAdmins, utils.FormatUserMarkdown, &bufferSelf)
-	bufferSelf.WriteString(fmt.Sprintf("**Боты:** __%d__\n", uBots))
-	//utils.FormatUsers(&uBots, utils.FormatUserMarkdown, &bufferSelf)
-	bufferSelf.WriteString(fmt.Sprintf("**Нарушители правил:** __%d__\n", uRuleBreakers))
-	//utils.FormatUsers(&uRuleBreakers, utils.FormatUserMarkdown, &bufferSelf)
-	bufferSelf.WriteString(fmt.Sprintf("\n\nВ розыгрыше учавствуют %v пользователей.", len(uParticipants)))
-	//utils.FormatUsers(&uParticipants, utils.FormatUserMarkdown, &bufferSelf)
-	_, err = c.Tool.MessagesSendMessageSelf(bufferSelf.String())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error occured while c.Tool.MessagesSendMessageSelf()")
-	}
-
-	uParticipantsLen := len(uParticipants)
-	if uParticipantsLen == 0 {
-		resp := "```\nНет участников для розыгрыша.\nРозыгрыш только среди админов - не смешите мои байтики.\n```"
-		err = utils.SendBotMessage(c.Bot, int64(chat.ID), resp)
-		return err
-	}
-
-	err = utils.SendBotMessage(c.Bot, int64(chat.ID), "Начинаем розыгрыш.")
-	if err != nil {
-		return err
-	}
-
-	<-time.After(5 * time.Second)
-
-	user := uParticipants[rand.Intn(uParticipantsLen)]
-	bufferBot := bytes.Buffer{}
-	bufferBot.WriteString("Итак, выигрывает...\n")
-	bufferBot.WriteString(utils.FormatUserDog(user))
-	bufferBot.WriteString("\nСпасибо всем за участие!")
-	return utils.SendBotMessage(c.Bot, int64(chat.ID), bufferBot.String())
 }

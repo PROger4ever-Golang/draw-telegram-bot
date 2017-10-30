@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"gopkg.in/mgo.v2"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
@@ -14,7 +13,6 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/setting-state"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
-	"bitbucket.org/proger4ever/draw-telegram-bot/state"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
@@ -36,28 +34,31 @@ func main() {
 	common.PanicIfError(err, "while ensuring user indexes")
 	fmt.Println("All indexes are ensured")
 
-	stateObj, err := state.Load()
-	if err == nil {
-		// stateObj = settingState.DecodeValue()
-		//stateObj = stateSetting.Value
-		fmt.Println("Bot state loaded from mongo")
-	} else {
-		if err == mgo.ErrNotFound {
-			fmt.Println("Clear state created for bot")
-		} else {
-			common.PanicIfError(err, "loading saved bot state from mongo")
-		}
-	}
-	fmt.Printf("stateObj: %q", stateObj)
+	// NOTE: User Api disabled
+	// stateObj, err := state.Load()
+	// if err == nil {
+	// 	// stateObj = settingState.DecodeValue()
+	// 	//stateObj = stateSetting.Value
+	// 	fmt.Println("Bot state loaded from mongo")
+	// } else {
+	// 	if err == mgo.ErrNotFound {
+	// 		fmt.Println("Clear state created for bot")
+	// 	} else {
+	// 		common.PanicIfError(err, "loading saved bot state from mongo")
+	// 	}
+	// }
+	// fmt.Printf("stateObj: %q", stateObj)
 	//endregion
 
 	//region user api
-	uac := conf.UserApi
-	tool := &userapi.Tool{}
-	err = tool.Run(stateObj, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, uac.Debug)
-	common.PanicIfError(err, "connecting to Telegram User API")
-	//fmt.Println(tool)
-	fmt.Println("Connected to Telegram User API.")
+	// NOTE: User Api disabled
+	var tool *userapi.Tool
+	// uac := conf.UserApi
+	// tool := &userapi.Tool{}
+	// err = tool.Run(stateObj, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, uac.Debug)
+	// common.PanicIfError(err, "connecting to Telegram User API")
+	// //fmt.Println(tool)
+	// fmt.Println("Connected to Telegram User API.")
 	//endregion
 
 	//region bot
@@ -81,11 +82,12 @@ func main() {
 		case update := <-updates:
 			router.ProcessUpdate(&update)
 			break
-		case stateObj := <-tool.StateCh:
-			if uac.Debug > 0 {
-				fmt.Println("saving stateObj to mongo...")
-			}
-			state.Save(&stateObj)
+			// NOTE: User Api disabled
+			// case stateObj := <-tool.StateCh:
+			// 	if uac.Debug > 0 {
+			// 		fmt.Println("saving stateObj to mongo...")
+			// 	}
+			// 	state.Save(&stateObj)
 		}
 	}
 }

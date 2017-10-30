@@ -25,6 +25,10 @@ func (m *SettingState) GetBaseModel() *mongo.BaseModel {
 	return m.BaseModel
 }
 
+func (m *SettingState) SetBaseModel(bm *mongo.BaseModel) {
+	m.BaseModel = bm
+}
+
 func (m *SettingState) CleanModel() {
 	m.Name = ""
 	m.Value = nil
