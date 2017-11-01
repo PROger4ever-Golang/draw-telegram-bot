@@ -20,7 +20,7 @@ func SendBotMessage(bot *tgbotapi.BotAPI, chatID int64, resp string, enableParsi
 	return err
 }
 func SendBotError(bot *tgbotapi.BotAPI, chatID int64, err error) error {
-	resp := fmt.Sprintf("Ошибка: %v", err)
+	resp := fmt.Sprintf("%s", err)
 	return SendBotMessage(bot, chatID, resp, false)
 }
 

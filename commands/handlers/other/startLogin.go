@@ -1,4 +1,4 @@
-package handlers
+package other
 
 import (
 	"fmt"
@@ -35,6 +35,7 @@ func (c *StartLoginHandler) Init(conf *config.Config, tool *userapi.Tool, bot *t
 }
 
 func (c *StartLoginHandler) Execute(msg *tgbotapi.Message, params []string) error {
+	// defer common.WrapIfPanic("startLogin.execute()")
 	err := c.Tool.StartLogin(params[0])
 	if err == nil {
 		resp := fmt.Sprintf("Отправь мне пришедший код, вставив в него минус:\n```\n/completeLoginWithCode -\n```")

@@ -1,7 +1,6 @@
 package routing
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -9,17 +8,19 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers"
+	pkgaddme "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
+	pkgplay "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
+	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
 var cmdRegexp = regexp.MustCompile("^/([A-Za-z0-9_-]+)(@([A-Za-z0-9_-]+))? ?(.*)")
 
 type CommandHandler interface {
-	GetName() string
+	GetNames() []string
 	IsForOwnersOnly() bool
 	GetParamsCount() int
 
@@ -45,20 +46,23 @@ func (r *Router) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.Bot
 
 func (r *Router) initCommands() {
 	r.Handlers = []CommandHandler{
-		&handlers.AddMeHandler{},
-		&handlers.PlayHandler{},
+		&pkgaddme.Handler{},
+		&pkgplay.Handler{},
 		// &handlers.StartLoginHandler{},
 		// &handlers.CompleteLoginWithCodeHandler{},
 	}
 	r.HandlersMap = make(map[string]CommandHandler)
-	for _, h := range r.Handlers {
-		h.Init(r.Conf, r.Tool, r.Bot)
-		r.HandlersMap[strings.ToLower(h.GetName())] = h
+	for _, handler := range r.Handlers {
+		handler.Init(r.Conf, r.Tool, r.Bot)
+		for _, name := range handler.GetNames() {
+			name = strings.ToLower(name)
+			r.HandlersMap[name] = handler
+		}
 	}
 }
 
 func (r *Router) ProcessUpdate(update *tgbotapi.Update) {
-	defer common.RepairIfError("processing update", update)
+	defer common.TraceIfPanic("ProcessUpdate()", update)
 
 	var msg *tgbotapi.Message
 	if update.Message != nil {
@@ -69,15 +73,16 @@ func (r *Router) ProcessUpdate(update *tgbotapi.Update) {
 
 	if msg != nil && len(msg.Text) > 0 {
 		err := r.processMessage(msg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Expected error while processing message: %v\n", err)
-		}
+		r.handleIfErrorMessage(msg, err)
 	}
 }
 
 func (r *Router) processMessage(msg *tgbotapi.Message) error {
-	txt := msg.Text
-	cmdSubmatches := cmdRegexp.FindStringSubmatch(txt)
+	defer func() {
+		r.handleIfErrorMessage(msg, recover())
+	}()
+
+	cmdSubmatches := cmdRegexp.FindStringSubmatch(msg.Text)
 	if len(cmdSubmatches) == 0 {
 		return nil
 	}
@@ -99,19 +104,41 @@ func (r *Router) processCmd(msg *tgbotapi.Message, name string, params []string)
 
 	h, hFound := r.HandlersMap[strings.ToLower(name)]
 	if !hFound {
-		err := fmt.Errorf("Неизвестная команда: %v", name)
-		return utils.SendBotError(r.Bot, int64(msg.Chat.ID), err)
+		return ee.Newf(true, false, "Неизвестная команда: %v", name)
 	}
 
 	if h.IsForOwnersOnly() && (msg.From == nil || msg.From.UserName != r.Conf.Management.OwnerUsername) {
-		err := errors.New("Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
-		return utils.SendBotError(r.Bot, int64(msg.Chat.ID), err)
+		return ee.New(true, false, "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
 	}
 
 	if len(params) != h.GetParamsCount() {
-		err := fmt.Errorf("Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsCount())
-		return utils.SendBotError(r.Bot, int64(msg.Chat.ID), err)
+		return ee.Newf(true, false, "Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsCount())
 	}
 
 	return h.Execute(msg, params)
+}
+
+func (r *Router) handleIfErrorMessage(msg *tgbotapi.Message, errI interface{}) {
+	if errI == nil {
+		return
+	}
+
+	err := errI.(error)
+	errActual := err
+
+	var isUserCause bool
+	ext, isEE := err.(*ee.ExtendedError)
+	if isEE {
+		isUserCause, _ = ext.Data().(bool)
+	} else {
+		errActual = ee.Wrap(err, false, true, "Unexpected error")
+	}
+
+	if isUserCause {
+		utils.SendBotError(r.Bot, msg.Chat.ID, ext.GetRoot())
+	} else {
+		fmt.Fprintf(os.Stderr, "%+v\n", errActual)
+		//TODO: send error to owner
+		// utils.SendBotError(r.Bot, msg.Chat.ID, errActual)
+	}
 }

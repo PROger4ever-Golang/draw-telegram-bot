@@ -1,4 +1,4 @@
-package handlers
+package other
 
 import (
 	"fmt"
