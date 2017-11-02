@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/PROger4ever/telegram-bot-api"
 
 	pkgaddme "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
 	pkghelp "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"

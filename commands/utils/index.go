@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/PROger4ever/telegram-bot-api"
 	"github.com/PROger4ever/telegramapi/mtproto"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 )

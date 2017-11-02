@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/mgo.v2"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/PROger4ever/telegram-bot-api"
 	"gopkg.in/mgo.v2/bson"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
