@@ -1,4 +1,4 @@
-package handlers
+package other
 
 // case "getDialogs":
 // 	r, err := c.Tool.MessagesGetDialogs()
