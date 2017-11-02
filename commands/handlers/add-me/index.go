@@ -32,14 +32,17 @@ const noChannelSubscription = `Ошибка регистрации.
 Вы не подписаны на канал @mazimota, ведь именно на нем проходят ежедневные розыгрыши призов! 
 Пожалуйста, сначала подпишитесь на канал @mazimota, и обязательно возвращайтесь зарегистрироваться у бота)
 ` + detailsInfo
-const registeredSuccessfully = `Вы зарегистрированы!  Желаем удачи!
+const registeredSuccessfully = `Вы зарегистрированы!
+Желаем удачи!
 ` + detailsInfo
-const alreadyRegisteredRecently = `Вы уже зарегистрированы в розыгрышах @mazimota.
-Ваши данные обновлялись недавно.
-Правила и подробности можно найти здесь: @mazimota_rules`
-const alreadyRegistered = `Вы уже зарегистрированы в розыгрышах @mazimota.
+const alreadyRegisteredRecently = `Вы зарегистрированы!
+Ваши данные обновлены недавно.
+Желаем удачи!
+` + detailsInfo
+const alreadyRegistered = `Вы зарегистрированы!
 Ваши данные обновлены.
-Правила и подробности можно найти здесь: @mazimota_rules`
+Желаем удачи!
+` + detailsInfo
 
 type Handler struct {
 	Bot  *tgbotapi.BotAPI
@@ -47,7 +50,7 @@ type Handler struct {
 	Tool *userapi.Tool
 }
 
-func (h *Handler) GetNames() []string {
+func (h *Handler) GetAliases() []string {
 	return []string{"addMe", "start"}
 }
 
@@ -55,7 +58,7 @@ func (h *Handler) IsForOwnersOnly() bool {
 	return false
 }
 
-func (h *Handler) GetParamsCount() int {
+func (h *Handler) GetParamsMinCount() int {
 	return 0
 }
 
@@ -76,7 +79,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		return ee.New(true, false, noUsername)
 	}
 
-	// 2. Имеется Username?
+	// 3. Ищем старую регистрацию в базе
 	uc := user.NewCollectionDefault()
 	u, err := uc.FindOne(bson.M{
 		"telegram_id": msg.From.ID,
@@ -85,17 +88,17 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		return ee.Wrap(err, false, true, cantQueryDB)
 	}
 
-	// 3. Если недавно регали - то зачем так часто обновлять его данные в АПИ?
-	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
-	if err != mgo.ErrNotFound && u.UpdatedAt.Before(fiveMinutesAgo) {
-		err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), alreadyRegisteredRecently, false)
+	// 4. Если недавно регали - то зачем так часто обновлять его данные в АПИ?
+	if err != mgo.ErrNotFound {
+		err = nil
+		minUpdateTime := time.Now().Add(-30 * time.Second)
+		if minUpdateTime.Before(u.UpdatedAt) {
+			err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), alreadyRegisteredRecently, false)
+			return ee.Wrap(err, false, true, cantSendBotMessage)
+		}
 	}
 
-	if err == nil {
-		return ee.Wrap(err, false, true, cantSendBotMessage)
-	}
-
-	// 4. Подписан на канал?
+	// 5. Подписан на канал?
 	chatMember, err := h.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
 		SuperGroupUsername: "@" + h.Conf.Management.ChannelUsername,
 		UserID:             msg.From.ID,
@@ -117,7 +120,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		return ee.New(true, false, noChannelSubscription)
 	}
 
-	// 5. Записать изменения в DB
+	// 6. Записать изменения в DB
 	u.TelegramID = msg.From.ID
 	u.Username = msg.From.UserName
 	u.FirstName = msg.From.FirstName
@@ -128,7 +131,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		return ee.Wrap(err, false, true, cantQueryDB)
 	}
 
-	// 5. Сообщить успех, правила
+	// 7. Сообщить успех, правила
 	var resp string
 	if info.Updated > 0 {
 		resp = alreadyRegistered

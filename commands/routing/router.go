@@ -8,8 +8,6 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	pkgaddme "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
-	pkgplay "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
@@ -17,46 +15,47 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
+const systemErrorText = `Извините, произошла системная ошибка бота.
+Обратитесь к администраторам на канале @mazimota_chat`
+
+var systemError = ee.New(true, false, systemErrorText)
+
 var cmdRegexp = regexp.MustCompile("^/([A-Za-z0-9_-]+)(@([A-Za-z0-9_-]+))? ?(.*)")
 
 type CommandHandler interface {
-	GetNames() []string
+	GetAliases() []string
 	IsForOwnersOnly() bool
-	GetParamsCount() int
+	GetParamsMinCount() int
 
 	Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI)
 	Execute(msg *tgbotapi.Message, params []string) error
 }
 
 type Router struct {
-	Bot  *tgbotapi.BotAPI
-	Conf *config.Config
-	Tool *userapi.Tool
+	Bot         *tgbotapi.BotAPI
+	Conf        *config.Config
+	Tool        *userapi.Tool
+	HelpCommand CommandHandler
 
 	Handlers    []CommandHandler
 	HandlersMap map[string]CommandHandler
 }
 
-func (r *Router) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+func (r *Router) Init(handlers []CommandHandler, helpCommand CommandHandler, conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+	r.Handlers = handlers
+	r.HelpCommand = helpCommand
 	r.Bot = bot
 	r.Conf = conf
 	r.Tool = tool
-	r.initCommands()
 }
 
-func (r *Router) initCommands() {
-	r.Handlers = []CommandHandler{
-		&pkgaddme.Handler{},
-		&pkgplay.Handler{},
-		// &handlers.StartLoginHandler{},
-		// &handlers.CompleteLoginWithCodeHandler{},
-	}
+func (r *Router) InitCommands() {
 	r.HandlersMap = make(map[string]CommandHandler)
 	for _, handler := range r.Handlers {
 		handler.Init(r.Conf, r.Tool, r.Bot)
-		for _, name := range handler.GetNames() {
-			name = strings.ToLower(name)
-			r.HandlersMap[name] = handler
+		for _, alias := range handler.GetAliases() {
+			alias = strings.ToLower(alias)
+			r.HandlersMap[alias] = handler
 		}
 	}
 }
@@ -104,15 +103,15 @@ func (r *Router) processCmd(msg *tgbotapi.Message, name string, params []string)
 
 	h, hFound := r.HandlersMap[strings.ToLower(name)]
 	if !hFound {
-		return ee.Newf(true, false, "Неизвестная команда: %v", name)
+		return r.HelpCommand.Execute(msg, []string{name})
 	}
 
 	if h.IsForOwnersOnly() && (msg.From == nil || msg.From.UserName != r.Conf.Management.OwnerUsername) {
 		return ee.New(true, false, "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
 	}
 
-	if len(params) != h.GetParamsCount() {
-		return ee.Newf(true, false, "Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsCount())
+	if len(params) < h.GetParamsMinCount() {
+		return ee.Newf(true, false, "Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsMinCount())
 	}
 
 	return h.Execute(msg, params)
@@ -135,10 +134,10 @@ func (r *Router) handleIfErrorMessage(msg *tgbotapi.Message, errI interface{}) {
 	}
 
 	if isUserCause {
-		utils.SendBotError(r.Bot, msg.Chat.ID, ext.GetRoot())
+		_ = utils.SendBotError(r.Bot, msg.Chat.ID, ext.GetRoot()) //Игнорим error, как мы это любим
 	} else {
 		fmt.Fprintf(os.Stderr, "%+v\n", errActual)
 		//TODO: send error to owner
-		// utils.SendBotError(r.Bot, msg.Chat.ID, errActual)
+		_ = utils.SendBotError(r.Bot, msg.Chat.ID, systemError) //Игнорим error, как мы это любим
 	}
 }

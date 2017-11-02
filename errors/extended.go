@@ -105,10 +105,16 @@ func Newf(data interface{}, enableStack bool, format string, args ...interface{}
 }
 
 func Wrap(cause error, data interface{}, enableStack bool, msg string) error {
+	if cause == nil {
+		return nil
+	}
 	return new(cause, data, enableStack, msg)
 }
 
 func Wrapf(cause error, data interface{}, enableStack bool, format string, args ...interface{}) error {
+	if cause == nil {
+		return nil
+	}
 	msg := fmt.Sprintf(format, args...)
 	return new(cause, data, enableStack, msg)
 }

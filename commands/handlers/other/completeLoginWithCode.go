@@ -25,7 +25,7 @@ func (c *CompleteLoginWithCodeHandler) IsForOwnersOnly() bool {
 	return true
 }
 
-func (c *CompleteLoginWithCodeHandler) GetParamsCount() int {
+func (c *CompleteLoginWithCodeHandler) GetParamsMinCount() int {
 	return 1
 }
 

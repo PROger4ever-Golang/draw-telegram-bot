@@ -76,19 +76,19 @@ func (m *BaseModel) SetContentFromMap(theMap bson.M) *BaseModel {
 		}
 	}
 
-	if createdAtI, okM := theMap["created_date"]; okM {
+	if createdAtI, okM := theMap["created_at"]; okM {
 		if createdAt, okC := createdAtI.(time.Time); okC {
 			m.CreatedAt = createdAt
 		}
 	}
 
-	if createdAtI, okM := theMap["created_date"]; okM {
-		if createdAt, okC := createdAtI.(time.Time); okC {
-			m.CreatedAt = createdAt
+	if updatedAtI, okM := theMap["updated_at"]; okM {
+		if updatedAt, okC := updatedAtI.(time.Time); okC {
+			m.UpdatedAt = updatedAt
 		}
 	}
 
-	if deletedAtI, okM := theMap["deleted_date"]; okM {
+	if deletedAtI, okM := theMap["deleted_at"]; okM {
 		if deletedAt, okC := deletedAtI.(time.Time); okC {
 			m.CreatedAt = deletedAt
 		}

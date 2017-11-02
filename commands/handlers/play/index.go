@@ -1,7 +1,8 @@
 package play
 
 import (
-	"bytes"
+	"fmt"
+	"time"
 
 	"gopkg.in/mgo.v2"
 
@@ -24,6 +25,11 @@ const commandUnavailable = "Команда недоступна в этом ча
 const noParticipants = `Нет участников канала, подписавшихся у бота на розыгрыш.
 Розыгрыш среди НИКОГО - не смешите мои байтики`
 
+const startingDraw = "Начинаем розыгрыш"
+const contenderAnnouncement = `Итак, выигрывает...
+%s
+Поздравляем!`
+
 var playPipeline = []bson.M{{
 	"$match": bson.M{
 		"username": bson.M{
@@ -44,7 +50,7 @@ type Handler struct {
 	Tool *userapi.Tool
 }
 
-func (h *Handler) GetNames() []string {
+func (h *Handler) GetAliases() []string {
 	return []string{"play"}
 }
 
@@ -52,7 +58,7 @@ func (h *Handler) IsForOwnersOnly() bool {
 	return false
 }
 
-func (h *Handler) GetParamsCount() int {
+func (h *Handler) GetParamsMinCount() int {
 	return 0
 }
 
@@ -67,6 +73,12 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		return ee.New(true, false, commandUnavailable)
 	}
 
+	err := utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), startingDraw, false)
+	if err != nil {
+		return ee.Wrap(err, false, true, cantSendBotMessage)
+	}
+	<-time.After(5 * time.Second)
+
 	uc := user.NewCollectionDefault()
 	for {
 		u, err := uc.PipeOne(playPipeline)
@@ -77,7 +89,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 			return ee.Wrap(err, false, true, cantQueryDB)
 		}
 
-		// 2. Обновляем данные пользователя
+		// Обновляем данные пользователя
 		chatMember, err := h.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
 			SuperGroupUsername: "@" + h.Conf.Management.ChannelUsername,
 			UserID:             u.TelegramID,
@@ -86,7 +98,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 			return ee.Wrap(err, false, true, cantQueryChatMember)
 		}
 
-		// 3. Нет Username? Не подписан на канал? - удаляем в DB, continue
+		// Нет Username? Не подписан на канал? - удаляем в DB, continue
 		if chatMember.User.UserName == "" || chatMember.Status != "member" {
 			err = u.RemoveId()
 			if err != nil {
@@ -95,12 +107,9 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 			continue
 		}
 
-		// 4. Объявляем победителя, break for
-		bufferBot := bytes.Buffer{}
-		bufferBot.WriteString("Итак, выигрывает...\n")
-		bufferBot.WriteString(utils.FormatUserDog(u))
-		bufferBot.WriteString("\nПоздравляем!")
-		err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), bufferBot.String(), false)
+		// Объявляем победителя, break for
+		resp := fmt.Sprintf(contenderAnnouncement, utils.FormatUserDog(u))
+		err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false)
 		return ee.Wrap(err, false, true, cantSendBotMessage)
 	}
 }

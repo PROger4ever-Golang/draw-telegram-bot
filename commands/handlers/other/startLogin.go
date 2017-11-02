@@ -24,7 +24,7 @@ func (c *StartLoginHandler) IsForOwnersOnly() bool {
 	return true
 }
 
-func (c *StartLoginHandler) GetParamsCount() int {
+func (c *StartLoginHandler) GetParamsMinCount() int {
 	return 1
 }
 

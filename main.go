@@ -7,6 +7,9 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
+	pkgaddme "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
+	pkghelp "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
+	pkgplay "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
@@ -74,8 +77,19 @@ func main() {
 	fmt.Printf("Authorized on bot %s\n", bot.Self.UserName)
 	//endregion
 
+	//region routing
+	helpCommand := &pkghelp.Handler{}
+	handlers := []routing.CommandHandler{
+		&pkgaddme.Handler{},
+		helpCommand,
+		&pkgplay.Handler{},
+		// &handlers.StartLoginHandler{},
+		// &handlers.CompleteLoginWithCodeHandler{},
+	}
 	router := routing.Router{}
-	router.Init(conf, tool, bot)
+	router.Init(handlers, helpCommand, conf, tool, bot)
+	router.InitCommands()
+	//endregion
 
 	for {
 		select {
