@@ -18,6 +18,10 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
+func Main() {
+	main()
+}
+
 func main() {
 	rand.NewSource(time.Now().UnixNano())
 
