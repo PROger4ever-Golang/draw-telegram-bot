@@ -84,7 +84,7 @@ func (ee *ExtendedError) setCause(cause error) *ExtendedError {
 	return ee
 }
 
-func new(cause error, data interface{}, enableStack bool, msg string) *ExtendedError {
+func newInternal(cause error, data interface{}, enableStack bool, msg string) *ExtendedError {
 	w := &ExtendedError{
 		msg:  msg,
 		data: data,
@@ -96,19 +96,19 @@ func new(cause error, data interface{}, enableStack bool, msg string) *ExtendedE
 }
 
 func New(data interface{}, enableStack bool, msg string) error {
-	return new(nil, data, enableStack, msg)
+	return newInternal(nil, data, enableStack, msg)
 }
 
 func Newf(data interface{}, enableStack bool, format string, args ...interface{}) error {
 	msg := fmt.Sprintf(format, args...)
-	return new(nil, data, enableStack, msg)
+	return newInternal(nil, data, enableStack, msg)
 }
 
 func Wrap(cause error, data interface{}, enableStack bool, msg string) error {
 	if cause == nil {
 		return nil
 	}
-	return new(cause, data, enableStack, msg)
+	return newInternal(cause, data, enableStack, msg)
 }
 
 func Wrapf(cause error, data interface{}, enableStack bool, format string, args ...interface{}) error {
@@ -116,5 +116,5 @@ func Wrapf(cause error, data interface{}, enableStack bool, format string, args 
 		return nil
 	}
 	msg := fmt.Sprintf(format, args...)
-	return new(cause, data, enableStack, msg)
+	return newInternal(cause, data, enableStack, msg)
 }

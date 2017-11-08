@@ -73,7 +73,7 @@ func (c *BaseCollection) FindOneInterface(query bson.M, value interface{}) (err 
 func (c *BaseCollection) FindOneModel(query bson.M, model Model) (err error) {
 	dataMap := bson.M{}
 	err = c.Connection.DB(c.DbName).C(c.Name).Find(query).One(dataMap)
-	model.GetBaseModel().SetContentFromMap(dataMap)
+	model.GetBaseModel().SetContent(dataMap)
 	return
 }
 
@@ -113,7 +113,7 @@ func (c *BaseCollection) InsertOneOrUpdateModel(query bson.M, model Model) (isUp
 		if err != nil {
 			return false, err
 		}
-		bm.SetContentFromMap(newMap)
+		bm.SetContent(newMap)
 	}
 	return
 }
@@ -178,7 +178,7 @@ func (c *BaseCollection) PipeInterface(pipeline interface{}) *mgo.Pipe {
 func (c *BaseCollection) PipeOneModel(pipeline interface{}, model Model) (err error) {
 	dataMap := bson.M{}
 	err = c.Connection.DB(c.DbName).C(c.Name).Pipe(pipeline).One(dataMap)
-	model.GetBaseModel().SetContentFromMap(dataMap)
+	model.GetBaseModel().SetContent(dataMap)
 	return
 }
 func (c *BaseCollection) getModelMap(model Model) bson.M {

@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/PROger4ever/telegram-bot-api"
-	"github.com/PROger4ever/telegramapi/mtproto"
-
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
+	"github.com/PROger4ever/telegram-bot-api"
 )
 
 func SendBotMessage(bot *tgbotapi.BotAPI, chatID int64, resp string, enableParsing bool) error {
@@ -42,10 +40,17 @@ func FormatUserDog(user *user.User) string {
 	return fmt.Sprintf("@%s", user.Username)
 }
 
-func FormatUsers(users *[]*mtproto.TLUser, formatter func(user *mtproto.TLUser) string, buffer *bytes.Buffer) {
-	for i, user := range *users {
-		buffer.WriteString(fmt.Sprintf("%d. ", i+1))
-		buffer.WriteString(formatter(user))
-		buffer.WriteString("\n")
+func FormatUsers(users []*user.User, formatter func(user *user.User) string) string {
+	buf := bytes.Buffer{}
+	i := 0
+	for ; i < len(users)-1; i++ {
+		buf.WriteString(fmt.Sprintf("%d. ", i+1))
+		buf.WriteString(formatter(users[i]))
+		buf.WriteString("\n")
 	}
+	if len(users) > 0 {
+		buf.WriteString(fmt.Sprintf("%d. ", i+1))
+		buf.WriteString(formatter(users[i]))
+	}
+	return buf.String()
 }

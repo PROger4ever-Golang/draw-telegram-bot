@@ -6,7 +6,7 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	tuapi "github.com/PROger4ever/telegramapi"
 	"github.com/PROger4ever/telegramapi/mtproto"
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -41,7 +41,7 @@ func (m *SettingState) GetContentMap() bson.M {
 	}
 }
 
-func (m *SettingState) SetContentFromMap(theMap bson.M) {
+func (m *SettingState) SetContent(theMap bson.M) {
 	if nameI, okM := theMap["name"]; okM {
 		if name, okC := nameI.(string); okC {
 			m.Name = name

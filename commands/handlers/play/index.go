@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"gopkg.in/mgo.v2"
-
 	"github.com/PROger4ever/telegram-bot-api"
 	"gopkg.in/mgo.v2/bson"
 
@@ -13,7 +11,10 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
+	snPkg "bitbucket.org/proger4ever/draw-telegram-bot/mongo/tools/SampleNavigator"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
+	"math"
+	"strconv"
 )
 
 //TODO: split common error messages into a package
@@ -22,27 +23,26 @@ const cantQueryChatMember = "Ошибка при получении информ
 const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
 
 const commandUnavailable = "Команда недоступна в этом чате"
-const noParticipants = `Нет участников канала, подписавшихся у бота на розыгрыш.
-Розыгрыш среди НИКОГО - не смешите мои байтики`
+const notEnoughParticipants = `Недостаточно участников канала, подписавшихся у бота на розыгрыш.
+Отправить приз в /dev/null - не смешите мои байтики! :)`
 
-const startingDraw = "Начинаем розыгрыш"
-const contenderAnnouncement = `Итак, выигрывает...
+const contendersAnnouncement = `Итак, выигрывают...
 %s
 Поздравляем!`
 
-var playPipeline = []bson.M{{
-	"$match": bson.M{
-		"username": bson.M{
-			// "$exists": true,
-			"$ne": "",
-		},
-		"status": "member",
-	},
-}, {
-	"$sample": bson.M{
-		"size": 1,
-	},
-}}
+//var playPipeline = []bson.M{{
+//	"$match": bson.M{
+//		"username": bson.M{
+//			// "$exists": true,
+//			"$ne": "",
+//		},
+//		"status": "member",
+//	},
+//}, {
+//	"$sample": bson.M{
+//		"size": 1,
+//	},
+//}}
 
 type Handler struct {
 	Bot  *tgbotapi.BotAPI
@@ -68,48 +68,82 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.Bo
 	h.Tool = tool
 }
 
-func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
+func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
 	if msg.Chat.UserName != h.Conf.Management.ChannelUsername {
 		return ee.New(true, false, commandUnavailable)
 	}
 
-	err := utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), startingDraw, false)
-	if err != nil {
-		return ee.Wrap(err, false, true, cantSendBotMessage)
+	prizeCount := 1
+	if len(params) > 0 {
+		prizeCountTmp, err := strconv.Atoi(params[0])
+		if err == nil {
+			prizeCount = prizeCountTmp
+		}
 	}
+
 	<-time.After(5 * time.Second)
 
-	uc := user.NewCollectionDefault()
-	for {
-		u, err := uc.PipeOne(playPipeline)
-		if err == mgo.ErrNotFound {
-			return ee.New(true, false, noParticipants)
-		}
-		if err != nil {
-			return ee.Wrap(err, false, true, cantQueryDB)
-		}
-
-		// Обновляем данные пользователя
-		chatMember, err := h.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
-			SuperGroupUsername: "@" + h.Conf.Management.ChannelUsername,
-			UserID:             u.TelegramID,
-		})
-		if err != nil {
-			return ee.Wrap(err, false, true, cantQueryChatMember)
-		}
-
-		// Нет Username? Не подписан на канал? - удаляем в DB, continue
-		if chatMember.User.UserName == "" || chatMember.Status != "member" {
-			err = u.RemoveId()
-			if err != nil {
-				return ee.Wrap(err, false, true, cantQueryDB)
-			}
-			continue
-		}
-
-		// Объявляем победителя, break for
-		resp := fmt.Sprintf(contenderAnnouncement, utils.FormatUserDog(u))
-		err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false)
-		return ee.Wrap(err, false, true, cantSendBotMessage)
+	contenders, err := h.getContenders(prizeCount)
+	if err != nil {
+		return err
 	}
+	if len(contenders) < prizeCount {
+		return ee.New(true, false, notEnoughParticipants)
+	}
+
+	// Объявляем победителей
+	contendersString := utils.FormatUsers(contenders, utils.FormatUserDog)
+	resp := fmt.Sprintf(contendersAnnouncement, contendersString)
+	err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false)
+	return ee.Wrap(err, false, true, cantSendBotMessage)
+}
+
+func (h *Handler) getContenders(count int) (contenders []*user.User, err error) {
+	contenders = make([]*user.User, 0, count)
+
+	uBufLen := int(math.Ceil(float64(count)*0.2)) + count
+	uc := user.NewCollectionDefault()
+	sn := snPkg.New(uc.BaseCollection, bson.M{}, uBufLen)
+
+	for i := 0; i < count; i++ {
+		u := user.New(uc)
+		isVerified := false
+		for !isVerified {
+			err = sn.Next(u)
+			if err == snPkg.ErrNotEnough {
+				return contenders, nil
+			}
+			if err != nil {
+				return contenders, ee.Wrap(err, false, true, cantQueryDB)
+			}
+
+			isVerified, err = h.verifyContender(u)
+			if err != nil {
+				return
+			}
+		}
+		contenders = append(contenders, u)
+	}
+	return
+}
+
+func (h *Handler) verifyContender(c *user.User) (isVerified bool, err error) {
+	// Обновляем данные пользователя
+	chatMember, err := h.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
+		SuperGroupUsername: "@" + h.Conf.Management.ChannelUsername,
+		UserID:             c.TelegramID,
+	})
+	if err != nil {
+		return false, ee.Wrap(err, false, true, cantQueryChatMember)
+	}
+
+	// Нет Username? Не подписан на канал? - удаляем в DB, continue
+	if chatMember.User.UserName == "" || chatMember.Status != "member" {
+		err = c.RemoveId()
+		if err != nil {
+			return false, ee.Wrap(err, false, true, cantQueryDB)
+		}
+		return false, nil
+	}
+	return true, nil
 }

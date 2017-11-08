@@ -49,7 +49,7 @@ func (m *User) GetContentMap() bson.M {
 	}
 }
 
-func (m *User) SetContentFromMap(theMap bson.M) {
+func (m *User) SetContent(theMap bson.M) {
 	if telegramIDI, okM := theMap["telegram_id"]; okM {
 		if telegramID, okC := telegramIDI.(int); okC {
 			m.TelegramID = telegramID

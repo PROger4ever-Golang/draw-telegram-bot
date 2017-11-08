@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -14,7 +14,7 @@ type Model interface {
 
 	GetContentMap() bson.M //reflection and Unmarshal can be used instead
 	CleanModel()
-	SetContentFromMap(theMap bson.M)
+	SetContent(theMap bson.M)
 }
 
 type BaseModel struct {
@@ -66,9 +66,9 @@ func (m *BaseModel) GetContentMap() (theMap bson.M) {
 	return theMap
 }
 
-func (m *BaseModel) SetContentFromMap(theMap bson.M) *BaseModel {
+func (m *BaseModel) SetContent(theMap bson.M) *BaseModel {
 	m.model.CleanModel()
-	m.model.SetContentFromMap(theMap)
+	m.model.SetContent(theMap)
 
 	if idI, okM := theMap["_id"]; okM {
 		if id, okC := idI.(bson.ObjectId); okC {

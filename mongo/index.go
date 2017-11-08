@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 )
 
 var DefaultConnection *Connection

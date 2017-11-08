@@ -2,7 +2,7 @@ package state
 
 import (
 	tuapi "github.com/PROger4ever/telegramapi"
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
