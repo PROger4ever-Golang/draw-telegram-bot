@@ -56,6 +56,6 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	} else {
 		text = helpText
 	}
-	err := utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), text, false)
+	err := utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), text, false, h.Conf.BotApi.DisableNotification)
 	return ee.Wrap(err, false, true, cantSendBotMessage)
 }

@@ -94,7 +94,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
 	// Объявляем победителей
 	contendersString := utils.FormatUsers(contenders, utils.FormatUserDog)
 	resp := fmt.Sprintf(contendersAnnouncement, contendersString)
-	err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false)
+	err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false, h.Conf.BotApi.DisableNotification)
 	return ee.Wrap(err, false, true, cantSendBotMessage)
 }
 

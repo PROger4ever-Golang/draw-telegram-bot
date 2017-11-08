@@ -8,9 +8,10 @@ import (
 
 type Config struct {
 	BotApi struct {
-		ID    int    `required:"true"`
-		Key   string `required:"true"`
-		Debug bool
+		ID                  int    `required:"true"`
+		Key                 string `required:"true"`
+		Debug               bool
+		DisableNotification bool `env:"BOTAPI_DISABLE_NOTIFICATION"`
 	}
 	UserApi struct {
 		Host      string `required:"true"`

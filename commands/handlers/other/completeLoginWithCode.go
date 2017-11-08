@@ -40,9 +40,9 @@ func (c *CompleteLoginWithCodeHandler) Execute(msg *tgbotapi.Message, params []s
 	user, err := c.Tool.CompleteLoginWithCode(phoneCode)
 	if err == nil {
 		resp := fmt.Sprintf("```\nМы успешно авторизовались.\nUserID: %d\nUsername: %s\nName: %s %s\n```", user.ID, user.Username, user.FirstName, user.LastName)
-		err = utils.SendBotMessage(c.Bot, int64(msg.Chat.ID), resp, true)
+		err = utils.SendBotMessage(c.Bot, int64(msg.Chat.ID), resp, true, c.Conf.BotApi.DisableNotification)
 	} else {
-		err = utils.SendBotError(c.Bot, int64(msg.Chat.ID), err)
+		err = utils.SendBotError(c.Bot, int64(msg.Chat.ID), err, c.Conf.BotApi.DisableNotification)
 	}
 	return err
 }

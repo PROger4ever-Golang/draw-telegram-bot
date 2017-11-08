@@ -39,9 +39,9 @@ func (c *StartLoginHandler) Execute(msg *tgbotapi.Message, params []string) erro
 	err := c.Tool.StartLogin(params[0])
 	if err == nil {
 		resp := fmt.Sprintf("Отправь мне пришедший код, вставив в него минус:\n```\n/completeLoginWithCode -\n```")
-		err = utils.SendBotMessage(c.Bot, int64(msg.Chat.ID), resp, true)
+		err = utils.SendBotMessage(c.Bot, int64(msg.Chat.ID), resp, true, c.Conf.BotApi.DisableNotification)
 	} else {
-		err = utils.SendBotError(c.Bot, int64(msg.Chat.ID), err)
+		err = utils.SendBotError(c.Bot, int64(msg.Chat.ID), err, c.Conf.BotApi.DisableNotification)
 	}
 	return err
 }

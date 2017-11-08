@@ -106,8 +106,12 @@ func (r *Router) processCmd(msg *tgbotapi.Message, name string, params []string)
 		return r.HelpCommand.Execute(msg, []string{name})
 	}
 
-	if h.IsForOwnersOnly() && (msg.From == nil || msg.From.UserName != r.Conf.Management.OwnerUsername) {
-		return ee.New(true, false, "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
+	if h.IsForOwnersOnly() {
+		isOwner := msg.From != nil && msg.From.UserName == r.Conf.Management.OwnerUsername
+		isOwnerChannel := msg.Chat.UserName == r.Conf.Management.ChannelUsername
+		if !isOwner && !isOwnerChannel {
+			return ee.New(true, false, "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
+		}
 	}
 
 	if len(params) < h.GetParamsMinCount() {
@@ -134,10 +138,10 @@ func (r *Router) handleIfErrorMessage(msg *tgbotapi.Message, errI interface{}) {
 	}
 
 	if isUserCause {
-		_ = utils.SendBotError(r.Bot, msg.Chat.ID, ext.GetRoot()) //Игнорим error, как мы это любим
+		_ = utils.SendBotError(r.Bot, msg.Chat.ID, ext.GetRoot(), r.Conf.BotApi.DisableNotification) //Игнорим error, как мы это любим
 	} else {
 		fmt.Fprintf(os.Stderr, "%+v\n", errActual)
 		//TODO: send error to owner
-		_ = utils.SendBotError(r.Bot, msg.Chat.ID, systemError) //Игнорим error, как мы это любим
+		_ = utils.SendBotError(r.Bot, msg.Chat.ID, systemError, r.Conf.BotApi.DisableNotification) //Игнорим error, как мы это любим
 	}
 }

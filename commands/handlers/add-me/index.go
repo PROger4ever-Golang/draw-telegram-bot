@@ -93,7 +93,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		err = nil
 		minUpdateTime := time.Now().Add(-30 * time.Second)
 		if minUpdateTime.Before(u.UpdatedAt) {
-			err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), alreadyRegisteredRecently, false)
+			err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), alreadyRegisteredRecently, false, h.Conf.BotApi.DisableNotification)
 			return ee.Wrap(err, false, true, cantSendBotMessage)
 		}
 	}
@@ -138,6 +138,6 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	} else {
 		resp = registeredSuccessfully
 	}
-	err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false)
+	err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false, h.Conf.BotApi.DisableNotification)
 	return ee.Wrap(err, false, true, cantSendBotMessage)
 }

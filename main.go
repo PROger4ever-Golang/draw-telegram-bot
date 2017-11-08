@@ -9,6 +9,7 @@ import (
 
 	pkgaddme "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
 	pkghelp "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
+	pkgnotifications "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
 	pkgplay "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
@@ -82,6 +83,7 @@ func main() {
 		&pkgaddme.Handler{},
 		helpCommand,
 		&pkgplay.Handler{},
+		&pkgnotifications.Handler{},
 		// &handlers.StartLoginHandler{},
 		// &handlers.CompleteLoginWithCodeHandler{},
 	}
