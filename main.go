@@ -7,9 +7,11 @@ import (
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/adminhelp"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/stat"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
@@ -74,7 +76,9 @@ func main() {
 		&addmepkg.Handler{},
 		helpCommand,
 		&playpkg.Handler{},
+		&statpkg.Handler{},
 		&notificationspkg.Handler{},
+		&adminhelppkg.Handler{},
 		// &handlers.StartLoginHandler{},
 		// &handlers.CompleteLoginWithCodeHandler{},
 	}

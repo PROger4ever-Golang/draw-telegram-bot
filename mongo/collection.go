@@ -77,6 +77,10 @@ func (c *BaseCollection) FindOneModel(query bson.M, model Model) (err error) {
 	return
 }
 
+func (c *BaseCollection) CountInterface(query bson.M) (n int, err error) {
+	return c.Connection.DB(c.DbName).C(c.Name).Find(query).Count()
+}
+
 func (c *BaseCollection) InsertInterface(values ...interface{}) (err error) {
 	err = c.Connection.DB(c.DbName).C(c.Name).Insert(values)
 	return
