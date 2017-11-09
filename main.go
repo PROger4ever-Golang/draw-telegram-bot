@@ -5,12 +5,11 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/PROger4ever/telegram-bot-api"
-
-	pkgaddme "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
-	pkghelp "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
-	pkgnotifications "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
-	pkgplay "bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
+	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
@@ -64,37 +63,29 @@ func main() {
 	// fmt.Println("Connected to Telegram User API.")
 	//endregion
 
-	//region bot
-	bac := conf.BotApi
-	competeKey := fmt.Sprintf("%v:%v", bac.ID, bac.Key)
-	bot, err := tgbotapi.NewBotAPI(competeKey)
-	common.PanicIfError(err, "creating bot instance")
-	bot.Debug = bac.Debug
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-	updates, err := bot.GetUpdatesChan(u)
-	common.PanicIfError(err, "getting updates chan")
-	fmt.Printf("Authorized on bot %s\n", bot.Self.UserName)
-	//endregion
+	bot := botpkg.Bot{}
+	err = bot.Init(&conf.BotApi)
+	common.PanicIfError(err, "initializing Bot API")
+	fmt.Printf("Authorized on bot %s\n", bot.BotApi.Self.UserName)
 
 	//region routing
-	helpCommand := &pkghelp.Handler{}
+	helpCommand := &helppkg.Handler{}
 	handlers := []routing.CommandHandler{
-		&pkgaddme.Handler{},
+		&addmepkg.Handler{},
 		helpCommand,
-		&pkgplay.Handler{},
-		&pkgnotifications.Handler{},
+		&playpkg.Handler{},
+		&notificationspkg.Handler{},
 		// &handlers.StartLoginHandler{},
 		// &handlers.CompleteLoginWithCodeHandler{},
 	}
 	router := routing.Router{}
-	router.Init(handlers, helpCommand, conf, tool, bot)
+	router.Init(handlers, helpCommand, conf, tool, &bot)
 	router.InitCommands()
 	//endregion
 
 	for {
 		select {
-		case update := <-updates:
+		case update := <-bot.Updates:
 			router.ProcessUpdate(&update)
 			break
 			// NOTE: User Api disabled

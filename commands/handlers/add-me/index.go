@@ -1,16 +1,16 @@
-package addme
+package addmepkg
 
 import (
 	"time"
 
 	"gopkg.in/mgo.v2"
 
-	"github.com/PROger4ever/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"gopkg.in/mgo.v2/bson"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
+	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
@@ -45,7 +45,7 @@ const alreadyRegistered = `Вы зарегистрированы!
 ` + detailsInfo
 
 type Handler struct {
-	Bot  *tgbotapi.BotAPI
+	Bot  *botpkg.Bot
 	Conf *config.Config
 	Tool *userapi.Tool
 }
@@ -62,7 +62,7 @@ func (h *Handler) GetParamsMinCount() int {
 	return 0
 }
 
-func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) {
 	h.Bot = bot
 	h.Conf = conf
 	h.Tool = tool
@@ -71,12 +71,12 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.Bo
 func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	// 1. От кого пришло?
 	if msg.From == nil {
-		return ee.New(true, false, commandUnavailable)
+		return eepkg.New(true, false, commandUnavailable)
 	}
 
 	// 2. Имеется Username?
 	if msg.From.UserName == "" {
-		return ee.New(true, false, noUsername)
+		return eepkg.New(true, false, noUsername)
 	}
 
 	// 3. Ищем старую регистрацию в базе
@@ -85,7 +85,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		"telegram_id": msg.From.ID,
 	})
 	if err != nil && err != mgo.ErrNotFound {
-		return ee.Wrap(err, false, true, cantQueryDB)
+		return eepkg.Wrap(err, false, true, cantQueryDB)
 	}
 
 	// 4. Если недавно регали - то зачем так часто обновлять его данные в АПИ?
@@ -93,8 +93,8 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		err = nil
 		minUpdateTime := time.Now().Add(-30 * time.Second)
 		if minUpdateTime.Before(u.UpdatedAt) {
-			err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), alreadyRegisteredRecently, false, h.Conf.BotApi.DisableNotification)
-			return ee.Wrap(err, false, true, cantSendBotMessage)
+			err = h.Bot.SendMessage(int64(msg.Chat.ID), alreadyRegisteredRecently, false)
+			return eepkg.Wrap(err, false, true, cantSendBotMessage)
 		}
 	}
 
@@ -104,20 +104,20 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		UserID:             msg.From.ID,
 	})
 	if err != nil {
-		return ee.Wrap(err, false, true, cantQueryChatMember)
+		return eepkg.Wrap(err, false, true, cantQueryChatMember)
 	}
 	switch chatMember.Status {
 	case "creator":
 		fallthrough
 	case "administrator":
-		return ee.New(true, false, adminsMayntPlay)
+		return eepkg.New(true, false, adminsMayntPlay)
 	case "kicked":
-		return ee.New(true, false, youBanned)
+		return eepkg.New(true, false, youBanned)
 	case "member":
 	case "left":
 		fallthrough
 	default:
-		return ee.New(true, false, noChannelSubscription)
+		return eepkg.New(true, false, noChannelSubscription)
 	}
 
 	// 6. Записать изменения в DB
@@ -128,7 +128,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	u.Status = chatMember.Status
 	info, err := u.UpsertId()
 	if err != nil {
-		return ee.Wrap(err, false, true, cantQueryDB)
+		return eepkg.Wrap(err, false, true, cantQueryDB)
 	}
 
 	// 7. Сообщить успех, правила
@@ -138,6 +138,6 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	} else {
 		resp = registeredSuccessfully
 	}
-	err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false, h.Conf.BotApi.DisableNotification)
-	return ee.Wrap(err, false, true, cantSendBotMessage)
+	err = h.Bot.SendMessage(int64(msg.Chat.ID), resp, false)
+	return eepkg.Wrap(err, false, true, cantSendBotMessage)
 }

@@ -1,13 +1,13 @@
-package help
+package helppkg
 
 import (
 	"fmt"
 
-	"github.com/PROger4ever/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
+	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
@@ -26,7 +26,7 @@ const unknownCommand = `Вы указали несуществующую ком�
 ` + helpText
 
 type Handler struct {
-	Bot  *tgbotapi.BotAPI
+	Bot  *botpkg.Bot
 	Conf *config.Config
 	Tool *userapi.Tool
 }
@@ -43,7 +43,7 @@ func (h *Handler) GetParamsMinCount() int {
 	return 0
 }
 
-func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) {
 	h.Bot = bot
 	h.Conf = conf
 	h.Tool = tool
@@ -56,6 +56,6 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	} else {
 		text = helpText
 	}
-	err := utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), text, false, h.Conf.BotApi.DisableNotification)
-	return ee.Wrap(err, false, true, cantSendBotMessage)
+	err := h.Bot.SendMessage(int64(msg.Chat.ID), text, false)
+	return eepkg.Wrap(err, false, true, cantSendBotMessage)
 }

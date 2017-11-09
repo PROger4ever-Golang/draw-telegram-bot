@@ -1,15 +1,16 @@
-package play
+package playpkg
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/PROger4ever/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"gopkg.in/mgo.v2/bson"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	snPkg "bitbucket.org/proger4ever/draw-telegram-bot/mongo/tools/SampleNavigator"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
@@ -45,7 +46,7 @@ const contendersAnnouncement = `Итак, выигрывают...
 //}}
 
 type Handler struct {
-	Bot  *tgbotapi.BotAPI
+	Bot  *botpkg.Bot
 	Conf *config.Config
 	Tool *userapi.Tool
 }
@@ -62,7 +63,7 @@ func (h *Handler) GetParamsMinCount() int {
 	return 0
 }
 
-func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) {
 	h.Bot = bot
 	h.Conf = conf
 	h.Tool = tool
@@ -70,7 +71,7 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.Bo
 
 func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
 	if msg.Chat.UserName != h.Conf.Management.ChannelUsername {
-		return ee.New(true, false, commandUnavailable)
+		return eepkg.New(true, false, commandUnavailable)
 	}
 
 	prizeCount := 1
@@ -88,14 +89,14 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
 		return err
 	}
 	if len(contenders) < prizeCount {
-		return ee.New(true, false, notEnoughParticipants)
+		return eepkg.New(true, false, notEnoughParticipants)
 	}
 
 	// Объявляем победителей
 	contendersString := utils.FormatUsers(contenders, utils.FormatUserDog)
 	resp := fmt.Sprintf(contendersAnnouncement, contendersString)
-	err = utils.SendBotMessage(h.Bot, int64(msg.Chat.ID), resp, false, h.Conf.BotApi.DisableNotification)
-	return ee.Wrap(err, false, true, cantSendBotMessage)
+	err = h.Bot.SendMessage(int64(msg.Chat.ID), resp, false)
+	return eepkg.Wrap(err, false, true, cantSendBotMessage)
 }
 
 func (h *Handler) getContenders(count int) (contenders []*user.User, err error) {
@@ -114,7 +115,7 @@ func (h *Handler) getContenders(count int) (contenders []*user.User, err error) 
 				return contenders, nil
 			}
 			if err != nil {
-				return contenders, ee.Wrap(err, false, true, cantQueryDB)
+				return contenders, eepkg.Wrap(err, false, true, cantQueryDB)
 			}
 
 			isVerified, err = h.verifyContender(u)
@@ -134,14 +135,14 @@ func (h *Handler) verifyContender(c *user.User) (isVerified bool, err error) {
 		UserID:             c.TelegramID,
 	})
 	if err != nil {
-		return false, ee.Wrap(err, false, true, cantQueryChatMember)
+		return false, eepkg.Wrap(err, false, true, cantQueryChatMember)
 	}
 
 	// Нет Username? Не подписан на канал? - удаляем в DB, continue
 	if chatMember.User.UserName == "" || chatMember.Status != "member" {
 		err = c.RemoveId()
 		if err != nil {
-			return false, ee.Wrap(err, false, true, cantQueryDB)
+			return false, eepkg.Wrap(err, false, true, cantQueryDB)
 		}
 		return false, nil
 	}

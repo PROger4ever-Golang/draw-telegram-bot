@@ -6,32 +6,7 @@ import (
 	"strconv"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
-	"github.com/PROger4ever/telegram-bot-api"
 )
-
-func SendBotMessage(bot *tgbotapi.BotAPI, chatID int64, resp string, enableParsing bool, disableNotification bool) error {
-	msg := tgbotapi.NewMessage(chatID, resp)
-	msg.DisableNotification = disableNotification
-	if enableParsing {
-		msg.ParseMode = "Markdown"
-	}
-	_, err := bot.Send(msg)
-	return err
-}
-func SendBotError(bot *tgbotapi.BotAPI, chatID int64, err error, disableNotification bool) error {
-	resp := fmt.Sprintf("%s", err)
-	return SendBotMessage(bot, chatID, resp, false, disableNotification)
-}
-
-// NOTE: User Api disabled
-// func SendError(tool *userapi.Tool, bot *tgbotapi.BotAPI, chatID int64, err error) error {
-// 	resp := fmt.Sprintf("```\nОшибка: %v\n```", err)
-// 	_, newErr := tool.MessagesSendMessageSelf(resp)
-// 	if newErr != nil {
-// 		newErr = SendBotError(bot, chatID, err)
-// 	}
-// 	return newErr
-// }
 
 func FormatUserMarkdown(user *user.User) string {
 	userLink := "tg://user?id=" + strconv.Itoa(user.TelegramID)

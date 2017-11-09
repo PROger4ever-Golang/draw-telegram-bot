@@ -1,12 +1,12 @@
-package notifications
+package notificationspkg
 
 import (
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
+	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 	"fmt"
-	"github.com/PROger4ever/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
@@ -19,7 +19,7 @@ const soundOff = "выключено"
 const soundStateIncorrect = "Некорректное значение параметра"
 
 type Handler struct {
-	Bot  *tgbotapi.BotAPI
+	Bot  *botpkg.Bot
 	Conf *config.Config
 	Tool *userapi.Tool
 }
@@ -36,7 +36,7 @@ func (h *Handler) GetParamsMinCount() int {
 	return 0
 }
 
-func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) {
 	h.Bot = bot
 	h.Conf = conf
 	h.Tool = tool
@@ -54,7 +54,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	case "1":
 		newState = true
 	default:
-		return ee.New(true, false, soundStateIncorrect)
+		return eepkg.New(true, false, soundStateIncorrect)
 	}
 	h.Conf.BotApi.DisableNotification = !newState
 	return h.sendState(msg.Chat.ID, soundNewStateFormat)
@@ -66,6 +66,6 @@ func (h *Handler) sendState(chatID int64, format string) error {
 		soundState = soundOff
 	}
 	resp := fmt.Sprintf(format, soundState)
-	err := utils.SendBotMessage(h.Bot, chatID, resp, true, h.Conf.BotApi.DisableNotification)
-	return ee.Wrap(err, true, false, cantSendBotMessage)
+	err := h.Bot.SendMessage(chatID, resp, true)
+	return eepkg.Wrap(err, true, false, cantSendBotMessage)
 }

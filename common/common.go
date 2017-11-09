@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 )
 
 func Abs(x int64) int64 {
@@ -25,7 +25,7 @@ func PanicIfError(err error, msg string) {
 
 func TraceIfPanic(src string, data interface{}) {
 	if err := recover(); err != nil {
-		w := ee.Wrapf(err.(error), data, true, "Error occured in %s", src)
+		w := eepkg.Wrapf(err.(error), data, true, "Error occured in %s", src)
 		fmt.Fprintf(os.Stderr, "%+v", w)
 	}
 }

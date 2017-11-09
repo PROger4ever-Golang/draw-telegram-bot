@@ -1,4 +1,4 @@
-package errors
+package eepkg
 
 //based on code from https://github.com/pkg/errors/blob/master/stack.go
 

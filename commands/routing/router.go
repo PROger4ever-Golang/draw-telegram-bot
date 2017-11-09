@@ -6,19 +6,19 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/PROger4ever/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
+	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	ee "bitbucket.org/proger4ever/draw-telegram-bot/errors"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
 const systemErrorText = `Извините, произошла системная ошибка бота.
 Обратитесь к администраторам на канале @mazimota_chat`
 
-var systemError = ee.New(true, false, systemErrorText)
+var systemError = eepkg.New(true, false, systemErrorText)
 
 var cmdRegexp = regexp.MustCompile("^/([A-Za-z0-9_-]+)(@([A-Za-z0-9_-]+))? ?(.*)")
 
@@ -27,12 +27,12 @@ type CommandHandler interface {
 	IsForOwnersOnly() bool
 	GetParamsMinCount() int
 
-	Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI)
+	Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
 	Execute(msg *tgbotapi.Message, params []string) error
 }
 
 type Router struct {
-	Bot         *tgbotapi.BotAPI
+	Bot         *botpkg.Bot
 	Conf        *config.Config
 	Tool        *userapi.Tool
 	HelpCommand CommandHandler
@@ -41,7 +41,7 @@ type Router struct {
 	HandlersMap map[string]CommandHandler
 }
 
-func (r *Router) Init(handlers []CommandHandler, helpCommand CommandHandler, conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+func (r *Router) Init(handlers []CommandHandler, helpCommand CommandHandler, conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) {
 	r.Handlers = handlers
 	r.HelpCommand = helpCommand
 	r.Bot = bot
@@ -89,7 +89,7 @@ func (r *Router) processMessage(msg *tgbotapi.Message) error {
 	cmdName := cmdSubmatches[1]
 	cmdBot := cmdSubmatches[3]
 	cmdParams := strings.Fields(cmdSubmatches[4])
-	if cmdBot != "" && cmdBot != r.Bot.Self.UserName {
+	if cmdBot != "" && cmdBot != r.Bot.BotApi.Self.UserName {
 		return nil
 	}
 	return r.processCmd(msg, cmdName, cmdParams)
@@ -110,12 +110,12 @@ func (r *Router) processCmd(msg *tgbotapi.Message, name string, params []string)
 		isOwner := msg.From != nil && msg.From.UserName == r.Conf.Management.OwnerUsername
 		isOwnerChannel := msg.Chat.UserName == r.Conf.Management.ChannelUsername
 		if !isOwner && !isOwnerChannel {
-			return ee.New(true, false, "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
+			return eepkg.New(true, false, "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!")
 		}
 	}
 
 	if len(params) < h.GetParamsMinCount() {
-		return ee.Newf(true, false, "Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsMinCount())
+		return eepkg.Newf(true, false, "Неверное количество параметров: %v. Ожидалось: %v", len(params), h.GetParamsMinCount())
 	}
 
 	return h.Execute(msg, params)
@@ -130,18 +130,18 @@ func (r *Router) handleIfErrorMessage(msg *tgbotapi.Message, errI interface{}) {
 	errActual := err
 
 	var isUserCause bool
-	ext, isEE := err.(*ee.ExtendedError)
+	ext, isEE := err.(*eepkg.ExtendedError)
 	if isEE {
 		isUserCause, _ = ext.Data().(bool)
 	} else {
-		errActual = ee.Wrap(err, false, true, "Unexpected error")
+		errActual = eepkg.Wrap(err, false, true, "Unexpected error")
 	}
 
 	if isUserCause {
-		_ = utils.SendBotError(r.Bot, msg.Chat.ID, ext.GetRoot(), r.Conf.BotApi.DisableNotification) //Игнорим error, как мы это любим
+		_ = r.Bot.SendError(msg.Chat.ID, ext.GetRoot()) //Игнорим error, как мы это любим
 	} else {
 		fmt.Fprintf(os.Stderr, "%+v\n", errActual)
 		//TODO: send error to owner
-		_ = utils.SendBotError(r.Bot, msg.Chat.ID, systemError, r.Conf.BotApi.DisableNotification) //Игнорим error, как мы это любим
+		_ = r.Bot.SendError(msg.Chat.ID, systemError) //Игнорим error, как мы это любим
 	}
 }

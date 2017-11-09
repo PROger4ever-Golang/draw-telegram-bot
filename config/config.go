@@ -6,13 +6,15 @@ import (
 	"github.com/jinzhu/configor"
 )
 
+type BotApiConfig struct {
+	ID                  int    `required:"true"`
+	Key                 string `required:"true"`
+	Debug               bool
+	DisableNotification bool `env:"BOTAPI_DISABLE_NOTIFICATION"`
+}
+
 type Config struct {
-	BotApi struct {
-		ID                  int    `required:"true"`
-		Key                 string `required:"true"`
-		Debug               bool
-		DisableNotification bool `env:"BOTAPI_DISABLE_NOTIFICATION"`
-	}
+	BotApi  BotApiConfig
 	UserApi struct {
 		Host      string `required:"true"`
 		Port      int    `required:"true"`

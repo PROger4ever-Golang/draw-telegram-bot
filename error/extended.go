@@ -1,4 +1,4 @@
-package errors
+package eepkg
 
 import (
 	"fmt"
@@ -49,26 +49,26 @@ func (ee *ExtendedError) GetRoot() error {
 	return ee.original
 }
 
-func (w *ExtendedError) Format(s fmt.State, verb rune) {
+func (ee *ExtendedError) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			io.WriteString(s, w.msg)
-			fmt.Fprintf(s, "\nData: %+v", w.data)
+			io.WriteString(s, ee.msg)
+			fmt.Fprintf(s, "\nData: %+v", ee.data)
 			fmt.Fprint(s, "\nStack:\n")
-			if w.stack == nil {
+			if ee.stack == nil {
 				fmt.Fprintf(s, "nil")
 			} else {
-				w.stack.Format(s, verb)
+				ee.stack.Format(s, verb)
 			}
-			fmt.Fprintf(s, "\nCause: %+v", w.cause)
+			fmt.Fprintf(s, "\nCause: %+v", ee.cause)
 			return
 		}
 		fallthrough
 	case 's':
-		io.WriteString(s, w.Error())
+		io.WriteString(s, ee.Error())
 	case 'q':
-		fmt.Fprintf(s, "%q", w.Error())
+		fmt.Fprintf(s, "%q", ee.Error())
 	}
 }
 

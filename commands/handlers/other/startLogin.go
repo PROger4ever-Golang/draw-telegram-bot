@@ -1,17 +1,17 @@
-package other
+package otherpkg
 
 import (
 	"fmt"
 
-	"github.com/PROger4ever/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
+	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
 )
 
 type StartLoginHandler struct {
-	Bot  *tgbotapi.BotAPI
+	Bot  *botpkg.Bot
 	Conf *config.Config
 	Tool *userapi.Tool
 }
@@ -28,7 +28,7 @@ func (c *StartLoginHandler) GetParamsMinCount() int {
 	return 1
 }
 
-func (c *StartLoginHandler) Init(conf *config.Config, tool *userapi.Tool, bot *tgbotapi.BotAPI) {
+func (c *StartLoginHandler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) {
 	c.Bot = bot
 	c.Conf = conf
 	c.Tool = tool
@@ -39,9 +39,9 @@ func (c *StartLoginHandler) Execute(msg *tgbotapi.Message, params []string) erro
 	err := c.Tool.StartLogin(params[0])
 	if err == nil {
 		resp := fmt.Sprintf("Отправь мне пришедший код, вставив в него минус:\n```\n/completeLoginWithCode -\n```")
-		err = utils.SendBotMessage(c.Bot, int64(msg.Chat.ID), resp, true, c.Conf.BotApi.DisableNotification)
+		err = c.Bot.SendMessage(int64(msg.Chat.ID), resp, true)
 	} else {
-		err = utils.SendBotError(c.Bot, int64(msg.Chat.ID), err, c.Conf.BotApi.DisableNotification)
+		err = c.Bot.SendError(int64(msg.Chat.ID), err)
 	}
 	return err
 }
