@@ -19,7 +19,7 @@ const commandsList = `Список админских команд:
 
 /sound - состояние уведомлений
 /sound 0 - отключить уведомления
-/sound 1 - Включить уведомления`
+/sound 1 - включить уведомления`
 
 type Handler struct {
 	Bot  *botpkg.Bot

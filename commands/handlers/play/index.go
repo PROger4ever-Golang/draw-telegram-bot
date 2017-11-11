@@ -27,6 +27,9 @@ const commandUnavailable = "Команда недоступна в этом ча
 const notEnoughParticipants = `Недостаточно участников канала, подписавшихся у бота на розыгрыш.
 Отправить приз в /dev/null - не смешите мои байтики! :)`
 
+const contenderAnnouncement = `Итак, выигрывает...
+%s
+Поздравляем!`
 const contendersAnnouncement = `Итак, выигрывают...
 %s
 Поздравляем!`
@@ -77,7 +80,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
 	prizeCount := 1
 	if len(params) > 0 {
 		prizeCountTmp, err := strconv.Atoi(params[0])
-		if err == nil {
+		if err == nil && prizeCountTmp > 0 {
 			prizeCount = prizeCountTmp
 		}
 	}
@@ -93,8 +96,14 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
 	}
 
 	// Объявляем победителей
-	contendersString := utils.FormatUsers(contenders, utils.FormatUserDog)
-	resp := fmt.Sprintf(contendersAnnouncement, contendersString)
+	resp := ""
+	if len(contenders) == 1 {
+		contenderString := utils.FormatUserDog(contenders[0])
+		resp = fmt.Sprintf(contenderAnnouncement, contenderString)
+	} else {
+		contendersString := utils.FormatUsers(contenders, utils.FormatUserDog)
+		resp = fmt.Sprintf(contendersAnnouncement, contendersString)
+	}
 	err = h.Bot.SendMessage(int64(msg.Chat.ID), resp, false)
 	return eepkg.Wrap(err, false, true, cantSendBotMessage)
 }
