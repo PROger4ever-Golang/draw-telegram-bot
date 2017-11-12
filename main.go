@@ -3,22 +3,28 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/adminhelp"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/stat"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing/private"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing/public"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
-	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
+
+const systemErrorText = `Извините, произошла системная ошибка бота.
+Обратитесь к администраторам на канале @mazimota_chat`
+
+var systemError = eepkg.New(true, false, systemErrorText)
+
+var privateRouter *private.Router
+var publicRouter *public.Router
+var bot *botpkg.Bot
 
 func main() {
 	rand.NewSource(time.Now().UnixNano())
@@ -39,58 +45,24 @@ func main() {
 	fmt.Println("All indexes are ensured")
 
 	// NOTE: User Api disabled
-	// stateObj, err := state.Load()
-	// if err == nil {
-	// 	// stateObj = settingState.DecodeValue()
-	// 	//stateObj = stateSetting.Value
-	// 	fmt.Println("Bot state loaded from mongo")
-	// } else {
-	// 	if err == mgo.ErrNotFound {
-	// 		fmt.Println("Clear state created for bot")
-	// 	} else {
-	// 		common.PanicIfError(err, "loading saved bot state from mongo")
-	// 	}
-	// }
-	// fmt.Printf("stateObj: %q", stateObj)
-	//endregion
+	//initUserApi(&conf.UserApi)
 
-	//region user api
-	// NOTE: User Api disabled
-	var tool *userapi.Tool
-	// uac := conf.UserApi
-	// tool := &userapi.Tool{}
-	// err = tool.Run(stateObj, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, uac.Debug)
-	// common.PanicIfError(err, "connecting to Telegram User API")
-	// //fmt.Println(tool)
-	// fmt.Println("Connected to Telegram User API.")
-	//endregion
-
-	bot := botpkg.Bot{}
-	err = bot.Init(&conf.BotApi)
+	bot = &botpkg.Bot{}
+	err = bot.Init(conf)
 	common.PanicIfError(err, "initializing Bot API")
 	fmt.Printf("Authorized on bot %s\n", bot.BotApi.Self.UserName)
 
-	//region routing
-	helpCommand := &helppkg.Handler{}
-	handlers := []routing.CommandHandler{
-		&addmepkg.Handler{},
-		helpCommand,
-		&playpkg.Handler{},
-		&statpkg.Handler{},
-		&notificationspkg.Handler{},
-		&adminhelppkg.Handler{},
-		// &handlers.StartLoginHandler{},
-		// &handlers.CompleteLoginWithCodeHandler{},
-	}
-	router := routing.Router{}
-	router.Init(handlers, helpCommand, conf, tool, &bot)
-	router.InitCommands()
-	//endregion
+	privateRouter = private.New(bot.Conf, bot.Tool, bot)
+	publicRouter = public.New(bot.Conf, bot.Tool, bot)
 
+	listen(bot)
+}
+
+func listen(bot *botpkg.Bot) {
 	for {
 		select {
 		case update := <-bot.Updates:
-			router.ProcessUpdate(&update)
+			processUpdate(&update)
 			break
 			// NOTE: User Api disabled
 			// case stateObj := <-tool.StateCh:
@@ -101,3 +73,83 @@ func main() {
 		}
 	}
 }
+
+func processUpdate(update *tgbotapi.Update) {
+	defer common.TraceIfPanic("ProcessUpdate()", update)
+
+	var msg *tgbotapi.Message
+	if update.Message != nil {
+		msg = update.Message
+	} else if update.ChannelPost != nil {
+		msg = update.ChannelPost
+	}
+
+	if msg != nil && len(msg.Text) > 0 {
+		err := processMessage(msg)
+		handleIfErrorMessage(msg, err)
+	}
+}
+func processMessage(msg *tgbotapi.Message) (err error) {
+	defer func() {
+		handleIfErrorMessage(msg, recover())
+	}()
+
+	if msg.Chat.IsPrivate() {
+		err = privateRouter.Execute(msg)
+	} else if msg.Chat.IsChannel() {
+		err = publicRouter.Execute(msg)
+	}
+	return
+}
+
+func handleIfErrorMessage(msg *tgbotapi.Message, errI interface{}) {
+	if errI == nil {
+		return
+	}
+
+	err := errI.(error)
+	errActual := err
+
+	var isUserCause bool
+	ext, isEE := err.(*eepkg.ExtendedError)
+	if isEE {
+		isUserCause, _ = ext.Data().(bool)
+	} else {
+		errActual = eepkg.Wrap(err, false, true, "Unexpected error")
+	}
+
+	if isUserCause {
+		_ = bot.SendError(msg.Chat.ID, ext.GetRoot()) //Игнорим error, как мы это любим
+	} else {
+		fmt.Fprintf(os.Stderr, "%+v\n", errActual)
+		//TODO: send error to owner
+		_ = bot.SendError(msg.Chat.ID, systemError) //Игнорим error, как мы это любим
+	}
+}
+
+// NOTE: User Api disabled
+//func initUserApiConf(bac *config.BotApiConfig) (err error) {
+//	 stateObj, err := state.Load()
+//	 if err == nil {
+//	 	// stateObj = settingState.DecodeValue()
+//	 	//stateObj = stateSetting.Value
+//	 	fmt.Println("Bot state loaded from mongo")
+//	 } else {
+//	 	if err == mgo.ErrNotFound {
+//	 		fmt.Println("Clear state created for bot")
+//	 	} else {
+//	 		common.PanicIfError(err, "loading saved bot state from mongo")
+//	 	}
+//	 }
+//	 fmt.Printf("stateObj: %q", stateObj)
+//}
+
+// NOTE: User Api disabled
+//func initUserApi(bac *config.BotApiConfig) (err error) {
+//	 uac := conf.UserApi
+//	 tool := &userapi.Tool{}
+//	 err = tool.Run(stateObj, uac.Host, uac.Port, uac.PublicKey, uac.ApiId, uac.ApiHash, uac.Debug)
+//	 common.PanicIfError(err, "connecting to Telegram User API")
+//	 //fmt.Println(tool)
+//	 fmt.Println("Connected to Telegram User API.")
+//}
