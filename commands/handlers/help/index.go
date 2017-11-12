@@ -32,7 +32,7 @@ type Handler struct {
 }
 
 func (h *Handler) GetAliases() []string {
-	return []string{"help"}
+	return []string{"помощь", "старт", "/help", "/start"}
 }
 
 func (h *Handler) IsForOwnersOnly() bool {

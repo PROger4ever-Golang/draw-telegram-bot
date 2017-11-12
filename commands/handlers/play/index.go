@@ -2,6 +2,8 @@ package playpkg
 
 import (
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -14,8 +16,6 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	snPkg "bitbucket.org/proger4ever/draw-telegram-bot/mongo/tools/SampleNavigator"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
-	"math"
-	"strconv"
 )
 
 //TODO: split common error messages into a package
@@ -55,7 +55,7 @@ type Handler struct {
 }
 
 func (h *Handler) GetAliases() []string {
-	return []string{"play"}
+	return []string{"/play", "розыграй"}
 }
 
 func (h *Handler) IsForOwnersOnly() bool {

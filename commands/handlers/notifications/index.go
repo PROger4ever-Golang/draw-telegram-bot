@@ -1,11 +1,12 @@
 package notificationspkg
 
 import (
+	"fmt"
+
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
-	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -25,7 +26,7 @@ type Handler struct {
 }
 
 func (h *Handler) GetAliases() []string {
-	return []string{"notifications", "sound"}
+	return []string{"звук", "/notifications", "/sound"}
 }
 
 func (h *Handler) IsForOwnersOnly() bool {

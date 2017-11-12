@@ -1,12 +1,13 @@
 package statpkg
 
 import (
+	"fmt"
+
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
-	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -29,7 +30,7 @@ type Handler struct {
 }
 
 func (h *Handler) GetAliases() []string {
-	return []string{"stat", "stats"}
+	return []string{"стат", "статистика", "/stat", "/stats"}
 }
 
 func (h *Handler) IsForOwnersOnly() bool {
