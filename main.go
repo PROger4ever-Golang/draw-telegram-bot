@@ -7,8 +7,13 @@ import (
 	"time"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing/private"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing/public"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/add-me"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/adminhelp"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/stat"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
 	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
@@ -22,8 +27,9 @@ const systemErrorText = `Извините, произошла системная
 
 var systemError = eepkg.New(true, false, systemErrorText)
 
-var privateRouter *private.Router
-var publicRouter *public.Router
+var helpHandler *helppkg.Handler
+var privateRouter *routing.BaseRouter
+var publicRouter *routing.BaseRouter
 var bot *botpkg.Bot
 
 func main() {
@@ -52,8 +58,20 @@ func main() {
 	common.PanicIfError(err, "initializing Bot API")
 	fmt.Printf("Authorized on bot %s\n", bot.BotApi.Self.UserName)
 
-	privateRouter = private.New(bot.Conf, bot.Tool, bot)
-	publicRouter = public.New(bot.Conf, bot.Tool, bot)
+	helpHandler = &helppkg.Handler{}
+	privateHandlers := []routing.CommandHandler{
+		&addmepkg.Handler{},
+		helpHandler,
+		&statpkg.Handler{},
+		&notificationspkg.Handler{},
+		&adminhelppkg.Handler{},
+	}
+	privateRouter = routing.New(bot.Conf, bot.Tool, bot, privateHandlers)
+
+	publicHandlers := []routing.CommandHandler{
+		&playpkg.Handler{},
+	}
+	publicRouter = routing.New(bot.Conf, bot.Tool, bot, publicHandlers)
 
 	listen(bot)
 }
@@ -94,10 +112,28 @@ func processMessage(msg *tgbotapi.Message) (err error) {
 		handleIfErrorMessage(msg, recover())
 	}()
 
+	cmd := routing.GetFullCommand(msg.Text)
+	if len(cmd) == 0 {
+		return
+	}
+	cmdName, cmdBot := routing.ParseCommand(cmd)
+	if cmdBot != "" && cmdBot != bot.BotApi.Self.UserName {
+		return
+	}
+
 	if msg.Chat.IsPrivate() {
-		err = privateRouter.Execute(msg)
+		if cmdName[0] == '/' {
+			cmdName = cmdName[1:]
+		}
+		err = privateRouter.Execute(cmdName, msg)
+		if err == routing.CommandNotFound {
+			err = helpHandler.Execute(msg, []string{cmdName})
+		}
 	} else if msg.Chat.IsChannel() {
-		err = publicRouter.Execute(msg)
+		err = publicRouter.Execute(cmdName, msg)
+		if err == routing.CommandNotFound {
+			err = nil
+		}
 	}
 	return
 }

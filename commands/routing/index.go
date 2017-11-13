@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"fmt"
 	"strings"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
@@ -10,7 +11,17 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
+const adminsOnlyCommand = "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!"
 const incorrectParamsLen = "Неверное количество параметров: %v. Ожидалось: %v"
+
+const incomingCommand = `Got cmd for me: %v, params: %q
+  at chat: id%d %s
+  from:    id%d %s <%s %s>
+`
+
+const commandNotFoundText = "Команда не найдена"
+
+var CommandNotFound = eepkg.New(true, false, commandNotFoundText)
 
 type CommandHandler interface {
 	GetAliases() []string
@@ -39,28 +50,26 @@ func (r *BaseRouter) Init(bot *botpkg.Bot, conf *config.Config, tool *userapi.To
 	return r
 }
 
-func (r *BaseRouter) GetFullCommand(text string) (cmd string) {
-	cmdIndex := strings.Index(text, " ")
-	if cmdIndex != -1 {
-		cmd = text[:cmdIndex]
-	} else {
-		cmd = text
+func (r *BaseRouter) Execute(cmdName string, msg *tgbotapi.Message) (err error) {
+	h, found := r.GetHandler(cmdName)
+	if !found {
+		return CommandNotFound
 	}
-	return
-}
-func (r *BaseRouter) GetParams(text string, start int) (params []string) {
-	if start >= len(text) {
-		return
+	params := GetParams(msg.Text, len(cmdName)+1)
+	if err = CheckParams(h, params); err != nil {
+		return err
 	}
-	paramsString := text[start:]
-	return strings.Fields(paramsString)
-}
 
-func (r *BaseRouter) CheckParams(h CommandHandler, params []string) (err error) {
-	if len(params) < h.GetParamsMinCount() {
-		return eepkg.Newf(true, false, incorrectParamsLen, len(params), h.GetParamsMinCount())
+	if h.IsForOwnersOnly() {
+		isOwner := msg.From != nil && msg.From.UserName == r.Conf.Management.OwnerUsername
+		isOwnerChannel := msg.Chat.UserName == r.Conf.Management.ChannelUsername
+		if !isOwner && !isOwnerChannel {
+			return eepkg.New(true, false, adminsOnlyCommand)
+		}
 	}
-	return
+
+	LogRequest(cmdName, params, msg)
+	return h.Execute(msg, params)
 }
 
 func (r *BaseRouter) GetHandler(cmd string) (handler CommandHandler, found bool) {
@@ -80,7 +89,58 @@ func (r *BaseRouter) initCommands() {
 	}
 }
 
-func New(handlers []CommandHandler, conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) (r *BaseRouter) {
+func New(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot, handlers []CommandHandler) (r *BaseRouter) {
 	r = &BaseRouter{}
 	return r.Init(bot, conf, tool, handlers)
+}
+
+func LogRequest(cmdName string, params []string, msg *tgbotapi.Message) {
+	var (
+		fromID                      int
+		fromUserName                string
+		fromFirstName, fromLastName string
+	)
+	if msg.From != nil {
+		fromID = msg.From.ID
+		fromUserName = msg.From.UserName
+		fromFirstName = msg.From.FirstName
+		fromLastName = msg.From.LastName
+	}
+
+	fmt.Printf(incomingCommand, cmdName, params, msg.Chat.ID, msg.Chat.UserName, fromID, fromUserName, fromFirstName, fromLastName)
+}
+func GetFullCommand(text string) (cmd string) {
+	cmdIndex := strings.Index(text, " ")
+	if cmdIndex != -1 {
+		cmd = text[:cmdIndex]
+	} else {
+		cmd = text
+	}
+	return
+}
+func ParseCommand(fullCmd string) (cmd string, bot string) {
+	cmdLastIndex := strings.LastIndex(fullCmd, "@")
+	if cmdLastIndex == -1 {
+		cmdLastIndex = len(fullCmd)
+	}
+	cmd = fullCmd[0:cmdLastIndex]
+
+	if cmdLastIndex+1 < len(fullCmd) {
+		bot = fullCmd[cmdLastIndex+1:]
+	}
+	return
+}
+func GetParams(text string, start int) (params []string) {
+	if start >= len(text) {
+		return
+	}
+	paramsString := text[start:]
+	return strings.Fields(paramsString)
+}
+
+func CheckParams(h CommandHandler, params []string) (err error) {
+	if len(params) < h.GetParamsMinCount() {
+		return eepkg.Newf(true, false, incorrectParamsLen, len(params), h.GetParamsMinCount())
+	}
+	return
 }

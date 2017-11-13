@@ -43,10 +43,7 @@ func (b *Bot) initBotApi(bac *config.BotApiConfig) (err error) {
 		Timeout: 60,
 	}
 	b.Updates, err = b.BotApi.GetUpdatesChan(u)
-	if err != nil {
-		return eepkg.Wrap(err, false, true, cantGetUpdatesChan)
-	}
-	return
+	return eepkg.Wrap(err, false, true, cantGetUpdatesChan)
 }
 
 func (b *Bot) SendMessage(chatID int64, resp string, enableParsing bool) error {
