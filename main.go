@@ -13,6 +13,7 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/stat"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/test"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
@@ -67,6 +68,7 @@ func main() {
 		&notificationspkg.Handler{},
 		&adminhelppkg.Handler{},
 		&userpkg.Handler{},
+		&testpkg.Handler{},
 	}
 	privateRouter = routing.New(bot.Conf, bot.Tool, bot, privateHandlers)
 
