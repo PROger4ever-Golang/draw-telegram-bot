@@ -3,17 +3,29 @@ package contender
 import (
 	"bytes"
 	"fmt"
-	"strconv"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 )
 
-func FormatUserMarkdown(user *user.User) string {
-	userLink := "tg://user?id=" + strconv.Itoa(user.TelegramID)
-	return fmt.Sprintf("[%v %v (id%d %s)](%s)", user.FirstName, user.LastName, user.ID, user.Username, userLink)
+const userCompleteFormat = `UserID: %d
+Username: %s
+Имя: %s %s
+
+Статус:     %s
+Создание:   %v
+Обновление: %v
+Удаление:   %v (если было)`
+
+func FormatUserComplete(user *user.User) string {
+	//userLink := "tg://user?id=" + strconv.Itoa(user.TelegramID)
+	//return fmt.Sprintf("[%v %v (id%d %s)](%s)", user.FirstName, user.LastName, user.ID, user.Username, userLink)
+	return fmt.Sprintf(userCompleteFormat, user.TelegramID,
+		user.Username, user.FirstName, user.LastName,
+		user.Status, user.CreatedAt, user.UpdatedAt, user.DeletedAt)
 }
+
 func FormatUserDog(user *user.User) string {
 	return fmt.Sprintf("@%s", user.Username)
 }

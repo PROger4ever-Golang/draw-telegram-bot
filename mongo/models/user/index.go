@@ -121,6 +121,18 @@ func (c *UserCollection) FindOne(query bson.M) (obj *User, err *eepkg.ExtendedEr
 	return
 }
 
+func (c *UserCollection) FindOneByTelegramID(telegramID int) (obj *User, err *eepkg.ExtendedError) {
+	return c.FindOne(bson.M{
+		"telegram_id": telegramID,
+	})
+}
+
+func (c *UserCollection) FindOneByUsername(username string) (obj *User, err *eepkg.ExtendedError) {
+	return c.FindOne(bson.M{
+		"username": username,
+	})
+}
+
 func (c *UserCollection) PipeOne(pipeline interface{}) (obj *User, err *eepkg.ExtendedError) {
 	obj = &User{}
 	obj.Init(c)
