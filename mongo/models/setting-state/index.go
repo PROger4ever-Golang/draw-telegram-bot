@@ -3,6 +3,7 @@ package settingState
 import (
 	"reflect"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	tuapi "github.com/PROger4ever/telegramapi"
 	"github.com/PROger4ever/telegramapi/mtproto"
@@ -12,12 +13,14 @@ import (
 
 type SettingState struct {
 	*mongo.BaseModel
-	Name  string
-	Value *StateSerializable
+	SettingStateCollection *SettingStateCollection
+	Name                   string
+	Value                  *StateSerializable
 }
 
 func (m *SettingState) Init(collection *SettingStateCollection) *SettingState {
-	m.BaseModel = mongo.NewModel(collection.BaseCollection, m)
+	m.SettingStateCollection = collection
+	m.BaseModel = mongo.NewModel(collection, m)
 	return m
 }
 
@@ -29,12 +32,12 @@ func (m *SettingState) SetBaseModel(bm *mongo.BaseModel) {
 	m.BaseModel = bm
 }
 
-func (m *SettingState) CleanModel() {
+func (m *SettingState) ClearModel() {
 	m.Name = ""
 	m.Value = nil
 }
 
-func (m *SettingState) GetContentMap() bson.M {
+func (m *SettingState) GetContent() bson.M {
 	return bson.M{
 		"name":  m.Name,
 		"value": m.Value,
@@ -60,15 +63,19 @@ type SettingStateCollection struct {
 }
 
 func (c *SettingStateCollection) Init(connection *mongo.Connection) {
-	c.BaseCollection = mongo.NewCollection(connection, c, "mazimotaBot", "settings", reflect.TypeOf(&SettingState{}))
+	c.BaseCollection = mongo.NewCollection(connection /*c,*/, "mazimotaBot", "settings", reflect.TypeOf(&SettingState{}))
 }
 
 func (c *SettingStateCollection) GetIndexes() []mgo.Index {
 	return []mgo.Index{}
 }
 
-func (c *SettingStateCollection) EnsureIndexes() error {
+func (c *SettingStateCollection) EnsureIndexes() *eepkg.ExtendedError {
 	return c.BaseCollection.EnsureIndexes(c.GetIndexes())
+}
+
+func (c *SettingStateCollection) GetBaseCollection() *mongo.BaseCollection {
+	return c.BaseCollection
 }
 
 func (c *SettingStateCollection) Upsert(query bson.M, value *SettingState) (info *mgo.ChangeInfo, err error) {

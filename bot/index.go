@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
@@ -15,6 +16,10 @@ const minRequestPeriod = 334 * time.Millisecond //should be changed after experi
 const cantConnectToBotApi = "Can't connect to Bot API"
 const cantGetUpdatesChan = "Can't get channel to get updates from Bot API"
 
+const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
+const cantQueryChatMember = "Ошибка при получении информации о участнике канала"
+const cantQueryChatMembersCount = "Ошибка при получении информации о количестве участников канала"
+
 type Bot struct {
 	Conf *config.Config
 
@@ -25,52 +30,71 @@ type Bot struct {
 	LastSendTime time.Time
 }
 
-func (b *Bot) Init(conf *config.Config) (err error) {
+func (b *Bot) Init(conf *config.Config) (err *eepkg.ExtendedError) {
 	b.Conf = conf
 
 	return b.initBotApi(&conf.BotApi)
 }
 
-func (b *Bot) initBotApi(bac *config.BotApiConfig) (err error) {
+func (b *Bot) initBotApi(bac *config.BotApiConfig) *eepkg.ExtendedError {
 	competeKey := fmt.Sprintf("%v:%v", bac.ID, bac.Key)
-	b.BotApi, err = tgbotapi.NewBotAPI(competeKey)
-	if err != nil {
-		return eepkg.Wrap(err, false, true, cantConnectToBotApi)
+	var errStd error
+	b.BotApi, errStd = tgbotapi.NewBotAPI(competeKey)
+	if errStd != nil {
+		return eepkg.Wrap(errStd, false, true, cantConnectToBotApi)
 	}
 
 	b.BotApi.Debug = bac.Debug
 	u := tgbotapi.UpdateConfig{
 		Timeout: 60,
 	}
-	b.Updates, err = b.BotApi.GetUpdatesChan(u)
-	return eepkg.Wrap(err, false, true, cantGetUpdatesChan)
+	b.Updates, errStd = b.BotApi.GetUpdatesChan(u)
+	return eepkg.Wrap(errStd, false, true, cantGetUpdatesChan)
 }
 
-func (b *Bot) SendMessage(chatID int64, resp string, enableParsing bool) error {
+func (b *Bot) SendMessage(chatID int64, resp string) *eepkg.ExtendedError {
 	msg := tgbotapi.NewMessage(chatID, resp)
-	msg.DisableNotification = b.Conf.BotApi.DisableNotification
-
-	//btn11 := tgbotapi.NewKeyboardButton("Регистрация")
-	//btn12 := tgbotapi.NewKeyboardButton("Помощь")
-	//row1 := tgbotapi.NewKeyboardButtonRow(btn11, btn12)
-	//msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(row1)
-
-	if enableParsing {
-		msg.ParseMode = "Markdown"
-	}
-	_, err := b.send(msg)
-	return err
+	return b.send(&msg)
 }
-func (b *Bot) SendError(chatID int64, err error) error {
+func (b *Bot) SendMessageMarkdown(chatID int64, resp string) *eepkg.ExtendedError {
+	msg := tgbotapi.NewMessage(chatID, resp)
+	msg.ParseMode = "Markdown"
+	return b.send(&msg)
+}
+func (b *Bot) SendMessageUserKeyboard(chatID int64, resp string) *eepkg.ExtendedError {
+	msg := tgbotapi.NewMessage(chatID, resp)
+	msg.ReplyMarkup = utils.UserKeyboard
+	return b.send(&msg)
+}
+func (b *Bot) SendError(chatID int64, err error) *eepkg.ExtendedError {
 	resp := fmt.Sprintf("%s", err)
-	return b.SendMessage(chatID, resp, false)
+	msg := tgbotapi.NewMessage(chatID, resp)
+	return b.send(&msg)
 }
-func (b *Bot) GetChatMember(config tgbotapi.ChatConfigWithUser) (tgbotapi.ChatMember, error) {
-	return b.BotApi.GetChatMember(config)
+func (b *Bot) SendErrorUserKeyboard(chatID int64, err error) *eepkg.ExtendedError {
+	resp := fmt.Sprintf("%s", err)
+	msg := tgbotapi.NewMessage(chatID, resp)
+	msg.ReplyMarkup = utils.UserKeyboard
+	return b.send(&msg)
+}
+
+func (b *Bot) GetChatMember(telegramID int) (cm tgbotapi.ChatMember, err *eepkg.ExtendedError) {
+	cm, errStd := b.BotApi.GetChatMember(tgbotapi.ChatConfigWithUser{
+		SuperGroupUsername: "@" + b.Conf.Management.ChannelUsername,
+		UserID:             telegramID,
+	})
+	return cm, eepkg.Wrap(errStd, false, true, cantQueryChatMember)
+}
+
+func (b *Bot) GetChatMemberCount() (count int, err *eepkg.ExtendedError) {
+	count, errStd := b.BotApi.GetChatMembersCount(tgbotapi.ChatConfig{
+		SuperGroupUsername: "@" + b.Conf.Management.ChannelUsername,
+	})
+	return count, eepkg.Wrap(errStd, false, true, cantQueryChatMembersCount)
 }
 
 // NOTE: User Api disabled
-// func SendError(tool *userapi.Tool, bot *botpkg.Bot, chatID int64, err error) error {
+// func SendError(tool *userapi.Tool, bot *botpkg.Bot, chatID int64, err *eepkg.ExtendedError) *eepkg.ExtendedError {
 // 	resp := fmt.Sprintf("```\nОшибка: %v\n```", err)
 // 	_, newErr := tool.MessagesSendMessageSelf(resp)
 // 	if newErr != nil {
@@ -88,7 +112,10 @@ func (b *Bot) waitRequestTime() {
 	}
 	b.LastSendTime = time.Now() // it could take longer due to high load
 }
-func (b *Bot) send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
+func (b *Bot) send(msg *tgbotapi.MessageConfig) (err *eepkg.ExtendedError) {
+	msg.DisableNotification = b.Conf.BotApi.DisableNotification
+
 	b.waitRequestTime()
-	return b.BotApi.Send(c)
+	_, errStd := b.BotApi.Send(msg)
+	return eepkg.Wrap(errStd, false, true, cantSendBotMessage)
 }

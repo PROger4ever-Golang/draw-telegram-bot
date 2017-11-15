@@ -11,10 +11,6 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-const cantQueryDB = "Ошибка при операции с БД"
-const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
-const cantQueryChatMembersCount = "Ошибка при получении информации о количестве участников канала"
-
 const statFormat = `*Напоминаю, что в БД могут быть отписавшиеся ранее пользователи.*
 Для обновления статусов всех пользователей в будущем будет команда /verifyUsers.
 ` + "```" + `
@@ -47,23 +43,20 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
 	h.Tool = tool
 }
 
-func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
-	channelCount, err := h.Bot.BotApi.GetChatMembersCount(tgbotapi.ChatConfig{
-		SuperGroupUsername: "@" + h.Conf.Management.ChannelUsername,
-	})
+func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err *eepkg.ExtendedError) {
+	channelCount, err := h.Bot.GetChatMemberCount()
 	if err != nil {
-		return eepkg.Wrap(err, false, true, cantQueryChatMembersCount)
+		return
 	}
 
 	uc := user.NewCollectionDefault()
 	dbCount, err := uc.CountInterface(nil)
 	if err != nil {
-		return eepkg.Wrap(err, false, true, cantQueryDB)
+		return err
 	}
 
 	percent := 100. * dbCount / channelCount
 
 	resp := fmt.Sprintf(statFormat, channelCount, dbCount, percent)
-	err = h.Bot.SendMessage(int64(msg.Chat.ID), resp, true)
-	return eepkg.Wrap(err, false, true, cantSendBotMessage)
+	return h.Bot.SendMessageMarkdown(int64(msg.Chat.ID), resp)
 }

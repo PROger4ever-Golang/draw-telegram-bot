@@ -1,4 +1,4 @@
-package common
+package app
 
 import (
 	"fmt"
@@ -7,19 +7,9 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 )
 
-func Abs(x int64) int64 {
-	if x < 0 {
-		return -x
-	}
-	if x == 0 {
-		return 0
-	}
-	return x
-}
-
-func PanicIfError(err error, msg string) {
+func PanicIfExtended(err *eepkg.ExtendedError, msg string) {
 	if err != nil {
-		panic(fmt.Errorf("Error occured while %v:\n%q", msg, err))
+		panic(fmt.Errorf("Extended error occured while %v:\n%q", msg, err))
 	}
 }
 

@@ -3,6 +3,7 @@ package user
 import (
 	"reflect"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"gopkg.in/mgo.v2"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
@@ -11,15 +12,18 @@ import (
 
 type User struct {
 	*mongo.BaseModel `bson:"-"`
-	TelegramID       int `bson:"telegram_id"`
-	Username         string
-	FirstName        string
-	LastName         string
-	Status           string
+	UserCollection   *UserCollection
+
+	TelegramID int `bson:"telegram_id"`
+	Username   string
+	FirstName  string
+	LastName   string
+	Status     string
 }
 
 func (m *User) Init(collection *UserCollection) *User {
-	m.BaseModel = mongo.NewModel(collection.BaseCollection, m)
+	m.UserCollection = collection //for UserModel itself
+	m.BaseModel = mongo.NewModel(collection, m)
 	return m
 }
 
@@ -31,7 +35,7 @@ func (m *User) SetBaseModel(bm *mongo.BaseModel) {
 	m.BaseModel = bm
 }
 
-func (m *User) CleanModel() {
+func (m *User) ClearModel() {
 	m.TelegramID = 0
 	m.Username = ""
 	m.FirstName = ""
@@ -39,7 +43,7 @@ func (m *User) CleanModel() {
 	m.Status = ""
 }
 
-func (m *User) GetContentMap() bson.M {
+func (m *User) GetContent() bson.M {
 	return bson.M{
 		"telegram_id": m.TelegramID,
 		"username":    m.Username,
@@ -81,12 +85,16 @@ func (m *User) SetContent(theMap bson.M) {
 	}
 }
 
+func (m *User) UpdateOneOrInsertTelegramId() (isUpdated bool, err *eepkg.ExtendedError) {
+	return m.UserCollection.UpdateOneOrInsertTelegramId(m)
+}
+
 type UserCollection struct {
 	*mongo.BaseCollection
 }
 
 func (c *UserCollection) Init(connection *mongo.Connection) {
-	c.BaseCollection = mongo.NewCollection(connection, c, "mazimotaBot", "users", reflect.TypeOf(&User{}))
+	c.BaseCollection = mongo.NewCollection(connection /*c,*/, "mazimotaBot", "users", reflect.TypeOf(&User{}))
 }
 
 func (c *UserCollection) GetIndexes() []mgo.Index {
@@ -98,33 +106,49 @@ func (c *UserCollection) GetIndexes() []mgo.Index {
 	}}
 }
 
-func (c *UserCollection) EnsureIndexes() error {
+func (c *UserCollection) EnsureIndexes() *eepkg.ExtendedError {
 	return c.BaseCollection.EnsureIndexes(c.GetIndexes())
 }
 
-func (c *UserCollection) FindOne(query bson.M) (obj *User, err error) {
+func (c *UserCollection) GetBaseCollection() *mongo.BaseCollection {
+	return c.BaseCollection
+}
+
+func (c *UserCollection) FindOne(query bson.M) (obj *User, err *eepkg.ExtendedError) {
 	obj = &User{}
 	obj.Init(c)
 	err = c.BaseCollection.FindOneModel(query, obj)
 	return
 }
 
-func (c *UserCollection) Insert(values ...*User) error {
+func (c *UserCollection) PipeOne(pipeline interface{}) (obj *User, err *eepkg.ExtendedError) {
+	obj = &User{}
+	obj.Init(c)
+	err = c.BaseCollection.PipeOneModel(pipeline, obj)
+	return
+}
+
+func (c *UserCollection) Insert(values ...*User) *eepkg.ExtendedError {
 	models := c.toModels(values)
 	return c.BaseCollection.InsertModel(models...)
 }
 
-func (c *UserCollection) InsertOneOrUpdateModel(value *User) (isUpdated bool, err error) {
+func (c *UserCollection) InsertOneOrUpdateTelegramId(value *User) (isUpdated bool, err *eepkg.ExtendedError) {
 	return c.BaseCollection.InsertOneOrUpdateModel(bson.M{
 		"telegram_id": value.TelegramID,
 	}, value)
 }
 
-func (c *UserCollection) PipeOne(pipeline interface{}) (obj *User, err error) {
-	obj = &User{}
-	obj.Init(c)
-	err = c.BaseCollection.PipeOneModel(pipeline, obj)
-	return
+func (c *UserCollection) UpdateOneOrInsertTelegramId(value *User) (isUpdated bool, err *eepkg.ExtendedError) {
+	return c.BaseCollection.UpdateOneOrInsertModel(bson.M{
+		"telegram_id": value.TelegramID,
+	}, value)
+}
+
+func (c *UserCollection) RemoveByTelegramID(telegramID int) *eepkg.ExtendedError {
+	return c.RemoveInterface(bson.M{
+		"telegram_id": telegramID,
+	})
 }
 
 func (c *UserCollection) toModels(values []*User) (models []mongo.Model) {

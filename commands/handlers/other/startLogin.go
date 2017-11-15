@@ -3,6 +3,7 @@ package otherpkg
 import (
 	"fmt"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
@@ -34,12 +35,12 @@ func (c *StartLoginHandler) Init(conf *config.Config, tool *userapi.Tool, bot *b
 	c.Tool = tool
 }
 
-func (c *StartLoginHandler) Execute(msg *tgbotapi.Message, params []string) error {
+func (c *StartLoginHandler) Execute(msg *tgbotapi.Message, params []string) *eepkg.ExtendedError {
 	// defer common.WrapIfPanic("startLogin.execute()")
 	err := c.Tool.StartLogin(params[0])
 	if err == nil {
 		resp := fmt.Sprintf("Отправь мне пришедший код, вставив в него минус:\n```\n/completeLoginWithCode -\n```")
-		err = c.Bot.SendMessage(int64(msg.Chat.ID), resp, true)
+		err = c.Bot.SendMessageMarkdown(int64(msg.Chat.ID), resp)
 	} else {
 		err = c.Bot.SendError(int64(msg.Chat.ID), err)
 	}

@@ -1,25 +1,27 @@
 package mongo
 
 import (
-	"errors"
 	"time"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
+
+var ModelIDNotSetError = eepkg.New(false, false, "Model's ID isn't set")
 
 type Model interface {
 	GetBaseModel() *BaseModel
 	SetBaseModel(bm *BaseModel)
 
-	GetContentMap() bson.M //reflection and Unmarshal can be used instead
-	CleanModel()
+	GetContent() bson.M //reflection and Unmarshal can be used instead
+	ClearModel()
 	SetContent(theMap bson.M)
 }
 
 type BaseModel struct {
-	collection *BaseCollection
-	model      Model
+	Collection Collection
+	Model      Model
 
 	ID        bson.ObjectId `bson:"_id,omitempty"`
 	CreatedAt time.Time     `bson:"created_at,omitempty"`
@@ -27,9 +29,9 @@ type BaseModel struct {
 	DeletedAt time.Time     `bson:"deleted_at,omitempty"`
 }
 
-func (m *BaseModel) Init(collection *BaseCollection, model Model) *BaseModel {
-	m.collection = collection
-	m.model = model
+func (m *BaseModel) Init(collection Collection, model Model) *BaseModel {
+	m.Collection = collection
+	m.Model = model
 	return m
 }
 
@@ -49,8 +51,14 @@ func (m *BaseModel) InitializeCommons() *BaseModel {
 	return m
 }
 
-func (m *BaseModel) GetContentMap() (theMap bson.M) {
-	theMap = m.model.GetContentMap() //unsorted map :(
+func (m *BaseModel) UpdateDate() *BaseModel {
+	t := time.Now()
+	m.UpdatedAt = t
+	return m
+}
+
+func (m *BaseModel) GetContent() (theMap bson.M) {
+	theMap = m.Model.GetContent() //unsorted map :(
 	if m.ID.Valid() {
 		theMap["_id"] = m.ID
 	}
@@ -66,9 +74,19 @@ func (m *BaseModel) GetContentMap() (theMap bson.M) {
 	return theMap
 }
 
+func (m *BaseModel) GetUpdateMap() (theMap bson.M) {
+	theMap = m.Model.GetContent()
+	if !m.UpdatedAt.IsZero() {
+		theMap["updated_at"] = m.UpdatedAt
+	}
+	if !m.DeletedAt.IsZero() { //TODO: how to undelete Model, if omitempty set?
+		theMap["deleted_at"] = m.DeletedAt
+	}
+	return theMap
+}
 func (m *BaseModel) SetContent(theMap bson.M) *BaseModel {
-	m.model.CleanModel()
-	m.model.SetContent(theMap)
+	m.Model.ClearModel()
+	m.Model.SetContent(theMap)
 
 	if idI, okM := theMap["_id"]; okM {
 		if id, okC := idI.(bson.ObjectId); okC {
@@ -96,24 +114,28 @@ func (m *BaseModel) SetContent(theMap bson.M) *BaseModel {
 	return m
 }
 
-func (m *BaseModel) Upsert(query bson.M) (info *mgo.ChangeInfo, err error) {
-	theMap := m.InitializeCommons().GetContentMap()
-	return m.collection.UpsertInterface(query, theMap)
+func (m *BaseModel) Upsert(query bson.M) (info *mgo.ChangeInfo, err *eepkg.ExtendedError) {
+	theMap := m.InitializeCommons().GetContent()
+	return m.Collection.GetBaseCollection().UpsertInterface(query, theMap)
 }
 
-func (m *BaseModel) UpsertId() (info *mgo.ChangeInfo, err error) {
-	theMap := m.InitializeId().InitializeCommons().GetContentMap()
-	return m.collection.UpsertIdInterface(m.ID, theMap)
+func (m *BaseModel) UpsertId() (info *mgo.ChangeInfo, err *eepkg.ExtendedError) {
+	theMap := m.InitializeId().InitializeCommons().GetContent()
+	return m.Collection.GetBaseCollection().UpsertIdInterface(m.ID, theMap)
 }
 
-func (m *BaseModel) RemoveId() (err error) {
+func (m *BaseModel) UpdateOneOrInsertModel(query bson.M) (isUpdated bool, err *eepkg.ExtendedError) {
+	return m.Collection.GetBaseCollection().UpdateOneOrInsertModel(query, m.Model)
+}
+
+func (m *BaseModel) RemoveId() (err *eepkg.ExtendedError) {
 	if !m.ID.Valid() {
-		return errors.New("Model's ID isn't set")
+		return ModelIDNotSetError
 	}
-	return m.collection.RemoveIdInterface(m.ID)
+	return m.Collection.GetBaseCollection().RemoveIdInterface(m.ID)
 }
 
-func NewModel(collection *BaseCollection, model Model) (m *BaseModel) {
+func NewModel(collection Collection, model Model) (m *BaseModel) {
 	m = &BaseModel{}
 	return m.Init(collection, model)
 }

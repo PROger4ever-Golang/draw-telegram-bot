@@ -6,7 +6,7 @@ import (
 )
 
 type ExtendedError struct {
-	error
+	*ExtendedError
 	msg      string
 	cause    error
 	data     interface{}
@@ -47,6 +47,13 @@ func (ee *ExtendedError) GetRoot() error {
 		return ee
 	}
 	return ee.original
+}
+
+func (ee *ExtendedError) AsError() error {
+	if ee == nil {
+		return nil
+	}
+	return ee
 }
 
 func (ee *ExtendedError) Format(s fmt.State, verb rune) {
@@ -95,23 +102,23 @@ func newInternal(cause error, data interface{}, enableStack bool, msg string) *E
 	return w.setCause(cause)
 }
 
-func New(data interface{}, enableStack bool, msg string) error {
+func New(data interface{}, enableStack bool, msg string) *ExtendedError {
 	return newInternal(nil, data, enableStack, msg)
 }
 
-func Newf(data interface{}, enableStack bool, format string, args ...interface{}) error {
+func Newf(data interface{}, enableStack bool, format string, args ...interface{}) *ExtendedError {
 	msg := fmt.Sprintf(format, args...)
 	return newInternal(nil, data, enableStack, msg)
 }
 
-func Wrap(cause error, data interface{}, enableStack bool, msg string) error {
+func Wrap(cause error, data interface{}, enableStack bool, msg string) *ExtendedError {
 	if cause == nil {
 		return nil
 	}
 	return newInternal(cause, data, enableStack, msg)
 }
 
-func Wrapf(cause error, data interface{}, enableStack bool, format string, args ...interface{}) error {
+func Wrapf(cause error, data interface{}, enableStack bool, format string, args ...interface{}) *ExtendedError {
 	if cause == nil {
 		return nil
 	}

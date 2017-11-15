@@ -6,22 +6,18 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"gopkg.in/mgo.v2/bson"
-
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	snPkg "bitbucket.org/proger4ever/draw-telegram-bot/mongo/tools/SampleNavigator"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
+	contenderUtils "bitbucket.org/proger4ever/draw-telegram-bot/utils/contender"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"gopkg.in/mgo.v2/bson"
 )
 
-//TODO: split common error messages into a package
-const cantQueryDB = "Ошибка при операции с БД"
-const cantQueryChatMember = "Ошибка при получении информации о участнике канала"
-const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
+const cantNavigateSample = "Can't navigate mongodb sample"
 
 const commandUnavailable = "Команда недоступна в этом чате"
 const notEnoughParticipants = `Недостаточно участников канала, подписавшихся у бота на розыгрыш.
@@ -72,7 +68,7 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
 	h.Tool = tool
 }
 
-func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
+func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err *eepkg.ExtendedError) {
 	if msg.Chat.UserName != h.Conf.Management.ChannelUsername {
 		return eepkg.New(true, false, commandUnavailable)
 	}
@@ -98,17 +94,16 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
 	// Объявляем победителей
 	resp := ""
 	if len(contenders) == 1 {
-		contenderString := utils.FormatUserDog(contenders[0])
+		contenderString := contenderUtils.FormatUserDog(contenders[0])
 		resp = fmt.Sprintf(contenderAnnouncement, contenderString)
 	} else {
-		contendersString := utils.FormatUsers(contenders, utils.FormatUserDog)
+		contendersString := contenderUtils.FormatUsers(contenders, contenderUtils.FormatUserDog)
 		resp = fmt.Sprintf(contendersAnnouncement, contendersString)
 	}
-	err = h.Bot.SendMessage(int64(msg.Chat.ID), resp, false)
-	return eepkg.Wrap(err, false, true, cantSendBotMessage)
+	return h.Bot.SendMessage(int64(msg.Chat.ID), resp)
 }
 
-func (h *Handler) getContenders(count int) (contenders []*user.User, err error) {
+func (h *Handler) getContenders(count int) (contenders []*user.User, err *eepkg.ExtendedError) {
 	contenders = make([]*user.User, 0, count)
 
 	uBufLen := int(math.Ceil(float64(count)*0.2)) + count
@@ -119,15 +114,15 @@ func (h *Handler) getContenders(count int) (contenders []*user.User, err error) 
 		u := user.New(uc)
 		isVerified := false
 		for !isVerified {
-			err = sn.Next(u)
-			if err == snPkg.ErrNotEnough {
+			errStd := sn.Next(u)
+			if errStd == snPkg.ErrNotEnough {
 				return contenders, nil
 			}
-			if err != nil {
-				return contenders, eepkg.Wrap(err, false, true, cantQueryDB)
+			if errStd != nil {
+				return contenders, eepkg.Wrap(errStd, false, true, cantNavigateSample)
 			}
 
-			isVerified, err = h.verifyContender(u)
+			u, isVerified, err = contenderUtils.RefreshUser(h.Bot, u.TelegramID)
 			if err != nil {
 				return
 			}
@@ -135,25 +130,4 @@ func (h *Handler) getContenders(count int) (contenders []*user.User, err error) 
 		contenders = append(contenders, u)
 	}
 	return
-}
-
-func (h *Handler) verifyContender(c *user.User) (isVerified bool, err error) {
-	// Обновляем данные пользователя
-	chatMember, err := h.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
-		SuperGroupUsername: "@" + h.Conf.Management.ChannelUsername,
-		UserID:             c.TelegramID,
-	})
-	if err != nil {
-		return false, eepkg.Wrap(err, false, true, cantQueryChatMember)
-	}
-
-	// Нет Username? Не подписан на канал? - удаляем в DB, continue
-	if chatMember.User.UserName == "" || chatMember.Status != "member" {
-		err = c.RemoveId()
-		if err != nil {
-			return false, eepkg.Wrap(err, false, true, cantQueryDB)
-		}
-		return false, nil
-	}
-	return true, nil
 }

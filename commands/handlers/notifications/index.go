@@ -10,8 +10,6 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
-
 const soundStateFormat = "Состояние уведомлений: *%s*"
 const soundNewStateFormat = "Новое состояние уведомлений: *%s*"
 const soundOn = "включено"
@@ -43,7 +41,7 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
 	h.Tool = tool
 }
 
-func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
+func (h *Handler) Execute(msg *tgbotapi.Message, params []string) *eepkg.ExtendedError {
 	if len(params) == 0 {
 		return h.sendState(msg.Chat.ID, soundStateFormat)
 	}
@@ -61,12 +59,11 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	return h.sendState(msg.Chat.ID, soundNewStateFormat)
 }
 
-func (h *Handler) sendState(chatID int64, format string) error {
+func (h *Handler) sendState(chatID int64, format string) *eepkg.ExtendedError {
 	soundState := soundOn
 	if h.Conf.BotApi.DisableNotification {
 		soundState = soundOff
 	}
 	resp := fmt.Sprintf(format, soundState)
-	err := h.Bot.SendMessage(chatID, resp, true)
-	return eepkg.Wrap(err, true, false, cantSendBotMessage)
+	return h.Bot.SendMessageMarkdown(chatID, resp)
 }

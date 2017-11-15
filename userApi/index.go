@@ -1,19 +1,24 @@
 package userapi
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
-	"errors"
-	"log"
-
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	tuapi "github.com/PROger4ever/telegramapi"
 	"github.com/PROger4ever/telegramapi/mtproto"
 )
 
+const cantStartLogin = "Can't start login at Telegram User API"
+const cantCompleteLogin = "Can't complete login at Telegram User API"
+
+var cantCastToTLUserError = eepkg.New(false, false, "Can't cast response to TLUser type")
+
 func UserTypesToUsers(userTypes *[]mtproto.TLUserType) *[]*mtproto.TLUser {
-	users := []*mtproto.TLUser{}
+	var users []*mtproto.TLUser
 	for _, userType := range *userTypes {
 		user := userType.(*mtproto.TLUser)
 		users = append(users, user)
@@ -75,20 +80,21 @@ func (tool *Tool) Run(state *tuapi.State, host string, port int, publicKey strin
 	}
 }
 
-func (tool *Tool) StartLogin(phoneNumber string) error {
-	return tool.Conn.StartLogin(phoneNumber)
+func (tool *Tool) StartLogin(phoneNumber string) *eepkg.ExtendedError {
+	errStd := tool.Conn.StartLogin(phoneNumber)
+	return eepkg.Wrap(errStd, false, true, cantStartLogin)
 }
 
-func (tool *Tool) CompleteLoginWithCode(phoneCode string) (*mtproto.TLUser, error) {
-	auth, err := tool.Conn.CompleteLoginWithCode(phoneCode)
-	if err != nil {
-		return nil, err
+func (tool *Tool) CompleteLoginWithCode(phoneCode string) (*mtproto.TLUser, *eepkg.ExtendedError) {
+	auth, errStd := tool.Conn.CompleteLoginWithCode(phoneCode)
+	if errStd != nil {
+		return nil, eepkg.Wrap(errStd, false, true, cantCompleteLogin)
 	}
 
 	if user, ok := auth.User.(*mtproto.TLUser); ok {
 		return user, nil
 	}
-	return nil, errors.New("can't cast response to TLUser type")
+	return nil, cantCastToTLUserError
 }
 
 func (tool *Tool) ChannelsGetParticipants(channelID int, accessHash uint64, filter mtproto.TLChannelParticipantsFilterType, offset int, limit int) (*mtproto.TLChannelsChannelParticipants, error) {

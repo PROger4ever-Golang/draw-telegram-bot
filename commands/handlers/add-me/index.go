@@ -3,21 +3,15 @@ package addmepkg
 import (
 	"time"
 
-	"gopkg.in/mgo.v2"
-
-	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"gopkg.in/mgo.v2/bson"
-
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
 	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
-
-const cantQueryDB = "Ошибка при операции с БД"
-const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
-const cantQueryChatMember = "Ошибка при получении информации о участнике канала"
 
 const commandUnavailable = "Команда недоступна в этом чате: невозможно определить отправителя сообщения"
 const noUsername = `Ошибка регистрации
@@ -35,12 +29,13 @@ const noChannelSubscription = `Ошибка регистрации.
 const registeredSuccessfully = `Вы зарегистрированы!
 Желаем удачи!
 ` + detailsInfo
-const alreadyRegisteredRecently = `Вы зарегистрированы!
-Ваши данные обновлены недавно.
+const alreadyRegisteredRecently = `Вы уже зарегистрированы!
+Повторная регистрация не требуется.
 Желаем удачи!
 ` + detailsInfo
-const alreadyRegistered = `Вы зарегистрированы!
-Ваши данные обновлены.
+const alreadyRegistered = `Вы уже зарегистрированы!
+Повторная регистрация не требуется.
+Мы обновили Ваши данные в базе бота.
 Желаем удачи!
 ` + detailsInfo
 
@@ -68,7 +63,7 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
 	h.Tool = tool
 }
 
-func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
+func (h *Handler) Execute(msg *tgbotapi.Message, params []string) *eepkg.ExtendedError {
 	// 1. От кого пришло?
 	if msg.From == nil {
 		return eepkg.New(true, false, commandUnavailable)
@@ -84,8 +79,8 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	u, err := uc.FindOne(bson.M{
 		"telegram_id": msg.From.ID,
 	})
-	if err != nil && err != mgo.ErrNotFound {
-		return eepkg.Wrap(err, false, true, cantQueryDB)
+	if err != nil && err.GetRoot() != mgo.ErrNotFound {
+		return err
 	}
 
 	// 4. Если недавно регали - то зачем так часто обновлять его данные в АПИ?
@@ -93,18 +88,14 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 		err = nil
 		minUpdateTime := time.Now().Add(-30 * time.Second)
 		if minUpdateTime.Before(u.UpdatedAt) {
-			err = h.Bot.SendMessage(int64(msg.Chat.ID), alreadyRegisteredRecently, false)
-			return eepkg.Wrap(err, false, true, cantSendBotMessage)
+			return h.Bot.SendMessageUserKeyboard(int64(msg.Chat.ID), alreadyRegisteredRecently)
 		}
 	}
 
 	// 5. Подписан на канал?
-	chatMember, err := h.Bot.GetChatMember(tgbotapi.ChatConfigWithUser{
-		SuperGroupUsername: "@" + h.Conf.Management.ChannelUsername,
-		UserID:             msg.From.ID,
-	})
+	chatMember, err := h.Bot.GetChatMember(msg.From.ID)
 	if err != nil {
-		return eepkg.Wrap(err, false, true, cantQueryChatMember)
+		return err
 	}
 	switch chatMember.Status {
 	case "creator":
@@ -128,7 +119,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	u.Status = chatMember.Status
 	info, err := u.UpsertId()
 	if err != nil {
-		return eepkg.Wrap(err, false, true, cantQueryDB)
+		return err
 	}
 
 	// 7. Сообщить успех, правила
@@ -138,6 +129,5 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) error {
 	} else {
 		resp = registeredSuccessfully
 	}
-	err = h.Bot.SendMessage(int64(msg.Chat.ID), resp, false)
-	return eepkg.Wrap(err, false, true, cantSendBotMessage)
+	return h.Bot.SendMessageUserKeyboard(int64(msg.Chat.ID), resp)
 }

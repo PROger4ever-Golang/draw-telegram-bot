@@ -8,8 +8,6 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-const cantSendBotMessage = "Ошибка при отправке сообщения от имени бота"
-
 const commandsList = `Список админских команд:
 /adminHelp - список админских команд
 стат - количество зарегистрированных
@@ -45,7 +43,6 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
 	h.Tool = tool
 }
 
-func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err error) {
-	err = h.Bot.SendMessage(int64(msg.Chat.ID), commandsList, true)
-	return eepkg.Wrap(err, false, true, cantSendBotMessage)
+func (h *Handler) Execute(msg *tgbotapi.Message, params []string) *eepkg.ExtendedError {
+	return h.Bot.SendMessageMarkdown(int64(msg.Chat.ID), commandsList)
 }

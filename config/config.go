@@ -3,8 +3,11 @@ package config
 import (
 	"strings"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"github.com/jinzhu/configor"
 )
+
+const loadingFailed = "Loading config failed"
 
 type BotApiConfig struct {
 	ID                  int    `required:"true"`
@@ -33,9 +36,12 @@ type Config struct {
 	}
 }
 
-func LoadConfig(file string) (*Config, error) {
+func LoadConfig(file string) (*Config, *eepkg.ExtendedError) {
 	var config Config
-	err := configor.New(&configor.Config{ENVPrefix: "-"}).Load(&config, file)
+	errStd := configor.New(&configor.Config{ENVPrefix: "-"}).Load(&config, file)
+	if errStd != nil {
+		return &config, eepkg.Wrap(errStd, false, true, loadingFailed)
+	}
 	config.UserApi.PublicKey = strings.Replace(config.UserApi.PublicKey, "\\n", "\n", -1)
-	return &config, err
+	return &config, nil
 }

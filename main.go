@@ -14,11 +14,11 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/stat"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/routing"
-	"bitbucket.org/proger4ever/draw-telegram-bot/common"
 	"bitbucket.org/proger4ever/draw-telegram-bot/config"
 	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
+	appUtils "bitbucket.org/proger4ever/draw-telegram-bot/utils/app"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -35,27 +35,27 @@ var bot *botpkg.Bot
 func main() {
 	rand.NewSource(time.Now().UnixNano())
 
-	conf, err := config.LoadConfig("config.json")
-	common.PanicIfError(err, "reading/decoding config file")
+	conf, ee := config.LoadConfig("config.json")
+	appUtils.PanicIfExtended(ee, "reading/decoding config file")
 
 	//region mongo
-	mongoConnection, err := mongo.InitDefaultConnection(conf.Mongo.Host, conf.Mongo.Port)
-	common.PanicIfError(err, "while connecting to mongo")
+	mongoConnection, ee := mongo.InitDefaultConnection(conf.Mongo.Host, conf.Mongo.Port)
+	appUtils.PanicIfExtended(ee, "while connecting to mongo")
 	defer mongoConnection.Close()
 	fmt.Println("Mongo session open")
 
-	// err = settingState.NewCollectionDefault().EnsureIndexes()
-	// common.PanicIfError(err, "while ensuring setting-state indexes")
-	err = user.NewCollectionDefault().EnsureIndexes()
-	common.PanicIfError(err, "while ensuring user indexes")
+	// ee = settingState.NewCollectionDefault().EnsureIndexes()
+	// common.PanicIfError(ee, "while ensuring setting-state indexes")
+	ee = user.NewCollectionDefault().EnsureIndexes()
+	appUtils.PanicIfExtended(ee, "while ensuring user indexes")
 	fmt.Println("All indexes are ensured")
 
 	// NOTE: User Api disabled
 	//initUserApi(&conf.UserApi)
 
 	bot = &botpkg.Bot{}
-	err = bot.Init(conf)
-	common.PanicIfError(err, "initializing Bot API")
+	ee = bot.Init(conf)
+	appUtils.PanicIfExtended(ee, "initializing Bot API")
 	fmt.Printf("Authorized on bot %s\n", bot.BotApi.Self.UserName)
 
 	helpHandler = &helppkg.Handler{}
@@ -93,7 +93,7 @@ func listen(bot *botpkg.Bot) {
 }
 
 func processUpdate(update *tgbotapi.Update) {
-	defer common.TraceIfPanic("ProcessUpdate()", update)
+	defer appUtils.TraceIfPanic("ProcessUpdate()", update)
 
 	var msg *tgbotapi.Message
 	if update.Message != nil {
@@ -104,10 +104,10 @@ func processUpdate(update *tgbotapi.Update) {
 
 	if msg != nil && len(msg.Text) > 0 {
 		err := processMessage(msg)
-		handleIfErrorMessage(msg, err)
+		handleIfExtendedErrorMessage(msg, err)
 	}
 }
-func processMessage(msg *tgbotapi.Message) (err error) {
+func processMessage(msg *tgbotapi.Message) (err *eepkg.ExtendedError) {
 	defer func() {
 		handleIfErrorMessage(msg, recover())
 	}()
@@ -138,30 +138,61 @@ func processMessage(msg *tgbotapi.Message) (err error) {
 	return
 }
 
-func handleIfErrorMessage(msg *tgbotapi.Message, errI interface{}) {
-	if errI == nil {
+func handleIfExtendedErrorMessage(msg *tgbotapi.Message, err *eepkg.ExtendedError) {
+	if err == nil {
 		return
 	}
 
-	err := errI.(error)
-	errActual := err
-
-	var isUserCause bool
-	ext, isEE := err.(*eepkg.ExtendedError)
-	if isEE {
-		isUserCause, _ = ext.Data().(bool)
-	} else {
-		errActual = eepkg.Wrap(err, false, true, "Unexpected error")
-	}
-
+	isUserCause := err.Data().(bool)
 	if isUserCause {
-		_ = bot.SendError(msg.Chat.ID, ext.GetRoot()) //Игнорим error, как мы это любим
+		if msg.Chat.IsPrivate() {
+			_ = bot.SendErrorUserKeyboard(msg.Chat.ID, err.GetRoot()) //Игнорим error, как мы это любим
+		} else {
+			_ = bot.SendError(msg.Chat.ID, err.GetRoot()) //Игнорим error, как мы это любим
+		}
 	} else {
-		fmt.Fprintf(os.Stderr, "%+v\n", errActual)
+		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		//TODO: send error to owner
 		_ = bot.SendError(msg.Chat.ID, systemError) //Игнорим error, как мы это любим
 	}
 }
+
+func handleIfErrorMessage(msg *tgbotapi.Message, errI interface{}) {
+	if errI == nil {
+		return
+	}
+	err := eepkg.Wrap(errI.(error), false, true, "Unexpected error")
+	handleIfExtendedErrorMessage(msg, err)
+}
+
+//func handleIfExtendedErrorMessage(msg *tgbotapi.Message, errI interface{}) {
+//	if errI == nil {
+//		return
+//	}
+//
+//	err := errI.(error)
+//	errActual := err
+//
+//	var isUserCause bool
+//	ext, isEE := err.(*eepkg.ExtendedError)
+//	if isEE {
+//		isUserCause, _ = ext.Data().(bool)
+//	} else {
+//		errActual = eepkg.Wrap(err, false, true, "Unexpected error")
+//	}
+//
+//	if isUserCause {
+//		if msg.Chat.IsPrivate() {
+//			_ = bot.SendErrorUserKeyboard(msg.Chat.ID, ext.GetRoot()) //Игнорим error, как мы это любим
+//		} else {
+//			_ = bot.SendError(msg.Chat.ID, ext.GetRoot()) //Игнорим error, как мы это любим
+//		}
+//	} else {
+//		fmt.Fprintf(os.Stderr, "%+v\n", errActual)
+//		//TODO: send error to owner
+//		_ = bot.SendError(msg.Chat.ID, systemError) //Игнорим error, как мы это любим
+//	}
+//}
 
 // NOTE: User Api disabled
 //func initUserApiConf(bac *config.BotApiConfig) (err error) {

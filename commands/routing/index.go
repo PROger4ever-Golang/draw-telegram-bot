@@ -29,7 +29,7 @@ type CommandHandler interface {
 	GetParamsMinCount() int
 
 	Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
-	Execute(msg *tgbotapi.Message, params []string) error
+	Execute(msg *tgbotapi.Message, params []string) *eepkg.ExtendedError
 }
 
 type BaseRouter struct {
@@ -50,7 +50,7 @@ func (r *BaseRouter) Init(bot *botpkg.Bot, conf *config.Config, tool *userapi.To
 	return r
 }
 
-func (r *BaseRouter) Execute(cmdName string, msg *tgbotapi.Message) (err error) {
+func (r *BaseRouter) Execute(cmdName string, msg *tgbotapi.Message) (err *eepkg.ExtendedError) {
 	h, found := r.GetHandler(cmdName)
 	if !found {
 		return CommandNotFound
@@ -138,7 +138,7 @@ func GetParams(text string, start int) (params []string) {
 	return strings.Fields(paramsString)
 }
 
-func CheckParams(h CommandHandler, params []string) (err error) {
+func CheckParams(h CommandHandler, params []string) (err *eepkg.ExtendedError) {
 	if len(params) < h.GetParamsMinCount() {
 		return eepkg.Newf(true, false, incorrectParamsLen, len(params), h.GetParamsMinCount())
 	}

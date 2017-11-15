@@ -5,9 +5,13 @@ import (
 	"reflect"
 	"time"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
+
+const cantEnsureIndexes = "Can't ensure indexes"
+const cantQueryDB = "Ошибка при операции с БД"
 
 type TypeMismatch struct {
 	ActualType   reflect.Type
@@ -21,32 +25,34 @@ func (e *TypeMismatch) Error() string {
 type Collection interface {
 	Init(connection *Connection)
 	GetIndexes() []mgo.Index
-	EnsureIndexes() error
+	EnsureIndexes() *eepkg.ExtendedError
+
+	GetBaseCollection() *BaseCollection
 }
 
 type BaseCollection struct {
 	Connection *Connection
-	Collection Collection //it's a pointer actually
-	DbName     string
-	Name       string
-	Type       reflect.Type
+	//Collection Collection //it's a pointer actually
+	DbName string
+	Name   string
+	Type   reflect.Type
 }
 
-func (c *BaseCollection) Init(connection *Connection, collection Collection, dbName string, name string, theType reflect.Type) *BaseCollection {
+func (c *BaseCollection) Init(connection *Connection /*Collection Collection,*/, dbName string, name string, theType reflect.Type) *BaseCollection {
 	c.Connection = connection
-	c.Collection = collection
+	//c.Collection = Collection
 	c.DbName = dbName
 	c.Name = name
 	c.Type = theType
 	return c
 }
 
-func (c *BaseCollection) EnsureIndexes(indexes []mgo.Index) (err error) {
+func (c *BaseCollection) EnsureIndexes(indexes []mgo.Index) (err *eepkg.ExtendedError) {
+	var errStd error
 	for i := 0; i < len(indexes) && err == nil; i++ {
-		err = c.Connection.DB(c.DbName).C(c.Name).EnsureIndex(indexes[i])
-		//TODO: return detailed error?
+		errStd = c.Connection.DB(c.DbName).C(c.Name).EnsureIndex(indexes[i])
 	}
-	return err
+	return eepkg.Wrap(errStd, false, true, cantEnsureIndexes)
 }
 
 func (c *BaseCollection) CheckType(model Model) {
@@ -65,130 +71,168 @@ func (c *BaseCollection) CheckTypes(values []Model) {
 	}
 }
 
-func (c *BaseCollection) FindOneInterface(query bson.M, value interface{}) (err error) {
-	err = c.Connection.DB(c.DbName).C(c.Name).Find(query).One(value)
-	return
+func (c *BaseCollection) FindOneInterface(query bson.M, value interface{}) (err *eepkg.ExtendedError) {
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Find(query).One(value)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) FindOneModel(query bson.M, model Model) (err error) {
+func (c *BaseCollection) FindOneModel(query bson.M, model Model) (err *eepkg.ExtendedError) {
 	dataMap := bson.M{}
-	err = c.Connection.DB(c.DbName).C(c.Name).Find(query).One(dataMap)
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Find(query).One(dataMap)
 	model.GetBaseModel().SetContent(dataMap)
-	return
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) CountInterface(query bson.M) (n int, err error) {
-	return c.Connection.DB(c.DbName).C(c.Name).Find(query).Count()
+func (c *BaseCollection) CountInterface(query bson.M) (n int, err *eepkg.ExtendedError) {
+	n, errStd := c.Connection.DB(c.DbName).C(c.Name).Find(query).Count()
+	return n, eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) InsertInterface(values ...interface{}) (err error) {
-	err = c.Connection.DB(c.DbName).C(c.Name).Insert(values)
-	return
+func (c *BaseCollection) InsertInterface(values ...interface{}) (err *eepkg.ExtendedError) {
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Insert(values)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) InsertModel(models ...Model) (err error) {
+func (c *BaseCollection) InsertModel(models ...Model) (err *eepkg.ExtendedError) {
 	c.CheckTypes(models)
 	maps := c.getModelMaps(models)
-	err = c.Connection.DB(c.DbName).C(c.Name).Insert(maps...)
-	return
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Insert(maps...)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) InsertOneOrUpdateModel(query bson.M, model Model) (isUpdated bool, err error) {
+func (c *BaseCollection) InsertOneOrUpdateModel(query bson.M, model Model) (isUpdated bool, err *eepkg.ExtendedError) {
 	c.CheckType(model)
 
 	bm := model.GetBaseModel()
 	bm.InitializeId().InitializeCommons()
-	theMap := bm.GetContentMap()
+	theMap := bm.GetContent()
 
-	err = c.Connection.DB(c.DbName).C(c.Name).Insert(theMap)
-	isUpdated = mgo.IsDup(err)
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Insert(theMap)
+	isUpdated = mgo.IsDup(errStd)
 	if isUpdated {
 		bm.ID = bson.ObjectId("")
 		bm.CreatedAt = time.Time{}
 
-		theMap = bm.GetContentMap()
+		theMap = bm.GetContent()
 		newMap := bson.M{}
-		_, err = c.Connection.DB(c.DbName).C(c.Name).Find(query).Apply(mgo.Change{
+		_, errStd := c.Connection.DB(c.DbName).C(c.Name).Find(query).Apply(mgo.Change{
 			Update: bson.M{
 				"$set": theMap,
 			},
 			ReturnNew: true,
 		}, newMap)
-		if err != nil {
-			return false, err
+		if errStd != nil {
+			return false, eepkg.Wrap(errStd, false, true, cantQueryDB)
 		}
 		bm.SetContent(newMap)
 	}
-	return
+	return isUpdated, eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpdateInterface(query bson.M, value interface{}) (err error) {
-	return c.Connection.DB(c.DbName).C(c.Name).Update(query, value)
+func (c *BaseCollection) UpdateOneOrInsertModel(query bson.M, model Model) (isUpdated bool, err *eepkg.ExtendedError) {
+	c.CheckType(model)
+
+	bm := model.GetBaseModel()
+	bm.UpdateDate()
+	theMap := bm.GetUpdateMap()
+	newMap := bson.M{}
+	info, errStd := c.Connection.DB(c.DbName).C(c.Name).Find(query).Apply(mgo.Change{
+		Update: bson.M{
+			"$set": theMap,
+		},
+		ReturnNew: true,
+	}, newMap)
+	if errStd != nil {
+		return false, eepkg.Wrap(errStd, false, true, cantQueryDB)
+	}
+	if info.Matched > 0 {
+		bm.SetContent(newMap)
+		return true, nil
+	}
+
+	bm.InitializeId().InitializeCommons()
+	theMap = bm.GetContent()
+	errStd = c.Connection.DB(c.DbName).C(c.Name).Insert(theMap)
+	return false, eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpdateModel(query bson.M, model Model) (err error) {
+func (c *BaseCollection) UpdateInterface(query bson.M, value interface{}) (err *eepkg.ExtendedError) {
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Update(query, value)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
+}
+
+func (c *BaseCollection) UpdateModel(query bson.M, model Model) (err *eepkg.ExtendedError) {
 	c.CheckType(model)
 	theMap := c.getModelMap(model)
-	return c.Connection.DB(c.DbName).C(c.Name).Update(query, theMap)
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Update(query, theMap)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpdateIdInterface(id interface{}, value interface{}) (err error) {
-	return c.Connection.DB(c.DbName).C(c.Name).UpdateId(id, value)
+func (c *BaseCollection) UpdateIdInterface(id interface{}, value interface{}) (err *eepkg.ExtendedError) {
+	errStd := c.Connection.DB(c.DbName).C(c.Name).UpdateId(id, value)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpdateIdModel(id interface{}, model Model) (err error) {
+func (c *BaseCollection) UpdateIdModel(id interface{}, model Model) (err *eepkg.ExtendedError) {
 	c.CheckType(model)
 	theMap := c.getModelMap(model)
-	return c.Connection.DB(c.DbName).C(c.Name).UpdateId(id, theMap)
+	errStd := c.Connection.DB(c.DbName).C(c.Name).UpdateId(id, theMap)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpsertInterface(query bson.M, value interface{}) (info *mgo.ChangeInfo, err error) {
-	return c.Connection.DB(c.DbName).C(c.Name).Upsert(query, value)
+func (c *BaseCollection) UpsertInterface(query bson.M, value interface{}) (info *mgo.ChangeInfo, err *eepkg.ExtendedError) {
+	info, errStd := c.Connection.DB(c.DbName).C(c.Name).Upsert(query, value)
+	return info, eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpsertModel(query bson.M, model Model) (info *mgo.ChangeInfo, err error) {
+func (c *BaseCollection) UpsertModel(query bson.M, model Model) (info *mgo.ChangeInfo, err *eepkg.ExtendedError) {
 	c.CheckType(model)
 	theMap := c.getModelMap(model)
-	return c.Connection.DB(c.DbName).C(c.Name).Upsert(query, theMap)
+	info, errStd := c.Connection.DB(c.DbName).C(c.Name).Upsert(query, theMap)
+	return info, eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpsertIdInterface(id interface{}, value interface{}) (info *mgo.ChangeInfo, err error) {
-	return c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, value)
+func (c *BaseCollection) UpsertIdInterface(id interface{}, value interface{}) (info *mgo.ChangeInfo, err *eepkg.ExtendedError) {
+	info, errStd := c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, value)
+	return info, eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) UpsertIdModel(id interface{}, model Model) (info *mgo.ChangeInfo, err error) {
+func (c *BaseCollection) UpsertIdModel(id interface{}, model Model) (info *mgo.ChangeInfo, err *eepkg.ExtendedError) {
 	c.CheckType(model)
 	theMap := c.getModelMap(model)
-	return c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, theMap)
+	info, errStd := c.Connection.DB(c.DbName).C(c.Name).UpsertId(id, theMap)
+	return info, eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) RemoveInterface(query bson.M) error {
-	return c.Connection.DB(c.DbName).C(c.Name).Remove(query)
+func (c *BaseCollection) RemoveInterface(query bson.M) (err *eepkg.ExtendedError) {
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Remove(query)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) RemoveIdInterface(id bson.ObjectId) error {
-	return c.Connection.DB(c.DbName).C(c.Name).RemoveId(id)
+func (c *BaseCollection) RemoveIdInterface(id bson.ObjectId) (err *eepkg.ExtendedError) {
+	errStd := c.Connection.DB(c.DbName).C(c.Name).RemoveId(id)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
-func (c *BaseCollection) RemoveAllInterface(query bson.M) (err error) {
-	_, err = c.Connection.DB(c.DbName).C(c.Name).RemoveAll(query)
-	return
+func (c *BaseCollection) RemoveAllInterface(query bson.M) (err *eepkg.ExtendedError) {
+	_, errStd := c.Connection.DB(c.DbName).C(c.Name).RemoveAll(query)
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 
 func (c *BaseCollection) PipeInterface(pipeline interface{}) *mgo.Pipe {
 	return c.Connection.DB(c.DbName).C(c.Name).Pipe(pipeline)
 }
 
-func (c *BaseCollection) PipeOneModel(pipeline interface{}, model Model) (err error) {
+func (c *BaseCollection) PipeOneModel(pipeline interface{}, model Model) (err *eepkg.ExtendedError) {
 	dataMap := bson.M{}
-	err = c.Connection.DB(c.DbName).C(c.Name).Pipe(pipeline).One(dataMap)
+	errStd := c.Connection.DB(c.DbName).C(c.Name).Pipe(pipeline).One(dataMap)
 	model.GetBaseModel().SetContent(dataMap)
-	return
+	return eepkg.Wrap(errStd, false, true, cantQueryDB)
 }
 func (c *BaseCollection) getModelMap(model Model) bson.M {
 	bm := model.GetBaseModel()
 	bm.InitializeId().InitializeCommons()
-	return bm.GetContentMap()
+	return bm.GetContent()
 }
 
 func (c *BaseCollection) getModelMaps(models []Model) (maps []interface{}) {
@@ -199,12 +243,12 @@ func (c *BaseCollection) getModelMaps(models []Model) (maps []interface{}) {
 	return
 }
 
-func NewCollection(connection *Connection, collection Collection, dbName string, name string, theType reflect.Type) (c *BaseCollection) {
+func NewCollection(connection *Connection /*Collection Collection,*/, dbName string, name string, theType reflect.Type) (c *BaseCollection) {
 	c = &BaseCollection{}
-	return c.Init(connection, collection, dbName, name, theType)
+	return c.Init(connection /*Collection,*/, dbName, name, theType)
 }
 
-func NewCollectionDefault(collection Collection, dbName string, name string, theType reflect.Type) (c *BaseCollection) {
+func NewCollectionDefault( /*Collection Collection,*/ dbName string, name string, theType reflect.Type) (c *BaseCollection) {
 	c = &BaseCollection{}
-	return c.Init(DefaultConnection, collection, dbName, name, theType)
+	return c.Init(DefaultConnection /*Collection,*/, dbName, name, theType)
 }

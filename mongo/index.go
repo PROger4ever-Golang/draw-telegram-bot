@@ -3,9 +3,11 @@ package mongo
 import (
 	"fmt"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/common"
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"gopkg.in/mgo.v2"
 )
+
+const connectionFailed = "Connection to MongoDB failed"
 
 var DefaultConnection *Connection
 
@@ -15,12 +17,14 @@ type Connection struct {
 	Session *mgo.Session
 }
 
-func (c *Connection) Init(host string, port int) (*Connection, error) {
-	var err error
-	c.Session, err = mgo.Dial(fmt.Sprintf("%s:%d", host, port))
-	common.PanicIfError(err, "opening connection to mongo")
+func (c *Connection) Init(host string, port int) (*Connection, *eepkg.ExtendedError) {
+	var errStd error
+	c.Session, errStd = mgo.Dial(fmt.Sprintf("%s:%d", host, port))
+	if errStd != nil {
+		return c, eepkg.Wrap(errStd, false, true, connectionFailed)
+	}
 	c.Session.SetMode(mgo.Monotonic, true)
-	return c, err
+	return c, nil
 }
 
 func (c *Connection) DB(dbName string) *mgo.Database {
@@ -35,12 +39,12 @@ func (c *Connection) Close() {
 	c.Session.Close()
 }
 
-func NewConnection(host string, port int) (connection *Connection, err error) {
+func NewConnection(host string, port int) (connection *Connection, err *eepkg.ExtendedError) {
 	connection = &Connection{}
 	return connection.Init(host, port)
 }
 
-func InitDefaultConnection(host string, port int) (connection *Connection, err error) {
+func InitDefaultConnection(host string, port int) (connection *Connection, err *eepkg.ExtendedError) {
 	DefaultConnection, err = NewConnection(host, port)
 	return DefaultConnection, err
 }

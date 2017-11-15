@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"bitbucket.org/proger4ever/draw-telegram-bot/error"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
@@ -35,12 +36,12 @@ func (c *CompleteLoginWithCodeHandler) Init(conf *config.Config, tool *userapi.T
 	c.Tool = tool
 }
 
-func (c *CompleteLoginWithCodeHandler) Execute(msg *tgbotapi.Message, params []string) error {
+func (c *CompleteLoginWithCodeHandler) Execute(msg *tgbotapi.Message, params []string) *eepkg.ExtendedError {
 	phoneCode := strings.Replace(params[0], "-", "", -1)
 	user, err := c.Tool.CompleteLoginWithCode(phoneCode)
 	if err == nil {
-		resp := fmt.Sprintf("```\nМы успешно авторизовались.\nUserID: %d\nUsername: %s\nName: %s %s\n```", user.ID, user.Username, user.FirstName, user.LastName)
-		err = c.Bot.SendMessage(int64(msg.Chat.ID), resp, true)
+		resp := fmt.Sprintf("Мы успешно авторизовались.\nUserID: %d\nUsername: %s\nName: %s %s", user.ID, user.Username, user.FirstName, user.LastName)
+		err = c.Bot.SendMessage(int64(msg.Chat.ID), resp)
 	} else {
 		err = c.Bot.SendError(int64(msg.Chat.ID), err)
 	}
