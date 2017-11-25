@@ -14,9 +14,8 @@ import (
 const adminsOnlyCommand = "Эта команда доступна только моему ПОВЕЛИТЕЛЮ! Я тебя не слушаюсь!"
 const incorrectParamsLen = "Неверное количество параметров: %v. Ожидалось: %v"
 
-const incomingCommand = `Got cmd for me: %v, params: %q
-  at chat: id%d %s
-  from:    id%d %s <%s %s>
+const incomingCommand = `    cmd: %v, params: %q
+
 `
 
 const commandNotFoundText = "Команда не найдена"
@@ -95,19 +94,7 @@ func New(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot, handlers []Co
 }
 
 func LogRequest(cmdName string, params []string, msg *tgbotapi.Message) {
-	var (
-		fromID                      int
-		fromUserName                string
-		fromFirstName, fromLastName string
-	)
-	if msg.From != nil {
-		fromID = msg.From.ID
-		fromUserName = msg.From.UserName
-		fromFirstName = msg.From.FirstName
-		fromLastName = msg.From.LastName
-	}
-
-	fmt.Printf(incomingCommand, cmdName, params, msg.Chat.ID, msg.Chat.UserName, fromID, fromUserName, fromFirstName, fromLastName)
+	fmt.Printf(incomingCommand, cmdName, params)
 }
 func GetFullCommand(text string) (cmd string) {
 	cmdIndex := strings.Index(text, " ")

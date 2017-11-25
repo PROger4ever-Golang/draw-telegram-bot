@@ -24,6 +24,11 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
+const incomingMessage = `Got msg for me: %v
+    at chat: id%d %s
+    from:    id%d %s <%s %s>
+`
+
 const systemErrorText = `Извините, произошла системная ошибка бота.
 Обратитесь к администраторам на канале @mazimota_chat`
 
@@ -116,6 +121,7 @@ func processMessage(msg *tgbotapi.Message) (err *eepkg.ExtendedError) {
 		handleIfErrorMessage(msg, recover())
 	}()
 
+	logMessage(msg.Text, msg)
 	cmd := routing.GetFullCommand(msg.Text)
 	if len(cmd) == 0 {
 		return
@@ -140,6 +146,22 @@ func processMessage(msg *tgbotapi.Message) (err *eepkg.ExtendedError) {
 		}
 	}
 	return
+}
+
+func logMessage(txt string, msg *tgbotapi.Message) {
+	var (
+		fromID                      int
+		fromUserName                string
+		fromFirstName, fromLastName string
+	)
+	if msg.From != nil {
+		fromID = msg.From.ID
+		fromUserName = msg.From.UserName
+		fromFirstName = msg.From.FirstName
+		fromLastName = msg.From.LastName
+	}
+
+	fmt.Printf(incomingMessage, txt, msg.Chat.ID, msg.Chat.UserName, fromID, fromUserName, fromFirstName, fromLastName)
 }
 
 func handleIfExtendedErrorMessage(msg *tgbotapi.Message, err *eepkg.ExtendedError) {
