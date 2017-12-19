@@ -8,6 +8,7 @@ import (
 
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 type User struct {
@@ -19,6 +20,8 @@ type User struct {
 	FirstName  string
 	LastName   string
 	Status     string
+
+	LastAdditionAt time.Time `bson:"last_addition_at,omitempty"`
 }
 
 func (m *User) Init(collection *UserCollection) *User {
@@ -41,15 +44,17 @@ func (m *User) ClearModel() {
 	m.FirstName = ""
 	m.LastName = ""
 	m.Status = ""
+	m.LastAdditionAt = time.Time{}
 }
 
 func (m *User) GetContent() bson.M {
 	return bson.M{
-		"telegram_id": m.TelegramID,
-		"username":    m.Username,
-		"firstname":   m.FirstName,
-		"lastname":    m.LastName,
-		"status":      m.Status,
+		"telegram_id":      m.TelegramID,
+		"username":         m.Username,
+		"firstname":        m.FirstName,
+		"lastname":         m.LastName,
+		"status":           m.Status,
+		"last_addition_at": m.LastAdditionAt,
 	}
 }
 
@@ -83,6 +88,16 @@ func (m *User) SetContent(theMap bson.M) {
 			m.Status = Status
 		}
 	}
+
+	if LastAdditionAtI, okM := theMap["last_addition_at"]; okM {
+		if LastAdditionAt, okC := LastAdditionAtI.(time.Time); okC {
+			m.LastAdditionAt = LastAdditionAt
+		}
+	}
+}
+
+func (m *User) UpdateTelegramId() (err *eepkg.ExtendedError) {
+	return m.UserCollection.UpdateTelegramId(m)
 }
 
 func (m *User) UpdateOneOrInsertTelegramId() (isUpdated bool, err *eepkg.ExtendedError) {
@@ -143,6 +158,12 @@ func (c *UserCollection) PipeOne(pipeline interface{}) (obj *User, err *eepkg.Ex
 func (c *UserCollection) Insert(values ...*User) *eepkg.ExtendedError {
 	models := c.toModels(values)
 	return c.BaseCollection.InsertModel(models...)
+}
+
+func (c *UserCollection) UpdateTelegramId(value *User) (err *eepkg.ExtendedError) {
+	return c.BaseCollection.UpdateModel(bson.M{
+		"telegram_id": value.TelegramID,
+	}, value)
 }
 
 func (c *UserCollection) InsertOneOrUpdateTelegramId(value *User) (isUpdated bool, err *eepkg.ExtendedError) {

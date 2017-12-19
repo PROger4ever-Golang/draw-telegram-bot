@@ -1,4 +1,4 @@
-package playpkg
+package playonlinepkg
 
 import (
 	"fmt"
@@ -19,7 +19,12 @@ import (
 const cantNavigateSample = "Can't navigate mongodb sample"
 
 const commandUnavailable = "Команда недоступна в этом чате"
-const notEnoughParticipants = `Недостаточно участников канала, подписавшихся у бота на розыгрыш.
+const invalidDuration = `Максимальная длительность оффлайна указана неверно.
+Примеры корректного формата:
+1) 15m
+2) 1h15m30s
+`
+const notEnoughParticipants = `Недостаточно участников канала, подписавшихся у бота на онлайн-розыгрыш.
 Отправить приз в /dev/null - не смешите мои байтики! :)`
 
 const contenderAnnouncement = `Итак, выигрывает...
@@ -29,20 +34,6 @@ const contendersAnnouncement = `Итак, выигрывают...
 %s
 Поздравляем!`
 
-//var playPipeline = []bson.M{{
-//	"$match": bson.M{
-//		"username": bson.M{
-//			// "$exists": true,
-//			"$ne": "",
-//		},
-//		"status": "member",
-//	},
-//}, {
-//	"$sample": bson.M{
-//		"size": 1,
-//	},
-//}}
-
 type Handler struct {
 	Bot  *botpkg.Bot
 	Conf *config.Config
@@ -50,7 +41,7 @@ type Handler struct {
 }
 
 func (h *Handler) GetAliases() []string {
-	return []string{"/play", "розыграй"}
+	return []string{"/playOnline", "розыграйОнлайн"}
 }
 
 func (h *Handler) IsForOwnersOnly() bool {
@@ -58,7 +49,7 @@ func (h *Handler) IsForOwnersOnly() bool {
 }
 
 func (h *Handler) GetParamsMinCount() int {
-	return 0
+	return 1
 }
 
 func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot) {
@@ -72,9 +63,14 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err *eepkg.Ex
 		return eepkg.New(true, false, commandUnavailable)
 	}
 
+	maxOfflineDuration, errStd := time.ParseDuration(params[0])
+	if errStd != nil {
+		return eepkg.New(true, false, invalidDuration)
+	}
+
 	prizeCount := 1
-	if len(params) >= 1 {
-		prizeCountTmp, err := strconv.Atoi(params[0])
+	if len(params) >= 2 {
+		prizeCountTmp, err := strconv.Atoi(params[1])
 		if err == nil && prizeCountTmp > 0 {
 			prizeCount = prizeCountTmp
 		}
@@ -82,7 +78,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err *eepkg.Ex
 
 	<-time.After(5 * time.Second)
 
-	contenders, err := h.getContenders(prizeCount)
+	contenders, err := h.getContenders(maxOfflineDuration, prizeCount)
 	if err != nil {
 		return err
 	}
@@ -102,11 +98,18 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err *eepkg.Ex
 	return h.Bot.SendMessage(int64(msg.Chat.ID), resp)
 }
 
-func (h *Handler) getContenders(count int) (contenders []*user.User, err *eepkg.ExtendedError) {
+func (h *Handler) getContenders(maxOfflineDuration time.Duration, count int) (contenders []*user.User, err *eepkg.ExtendedError) {
 	contenders = make([]*user.User, 0, count)
-
 	uc := user.NewCollectionDefault()
-	sn := snPkg.New(uc.BaseCollection, bson.M{}, count)
+
+	maxOfflineTime := time.Now().Add(-maxOfflineDuration)
+	var match = bson.M{
+		"last_addition_at": bson.M{
+			"$gte": maxOfflineTime,
+		},
+	}
+	fmt.Printf("maxOfflineTime: %v", maxOfflineTime)
+	sn := snPkg.New(uc.BaseCollection, match, count)
 
 	for i := 0; i < count; i++ {
 		u := user.New(uc)

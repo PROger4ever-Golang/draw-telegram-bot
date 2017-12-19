@@ -12,6 +12,7 @@ import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/help"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/notifications"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play"
+	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/play-online"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/stat"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/test"
 	"bitbucket.org/proger4ever/draw-telegram-bot/commands/handlers/user"
@@ -79,6 +80,7 @@ func main() {
 
 	publicHandlers := []routing.CommandHandler{
 		&playpkg.Handler{},
+		&playonlinepkg.Handler{},
 	}
 	publicRouter = routing.New(bot.Conf, bot.Tool, bot, publicHandlers)
 

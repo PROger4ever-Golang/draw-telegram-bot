@@ -45,30 +45,25 @@ func FormatUsers(users []*user.User, formatter func(user *user.User) string) str
 	return buf.String()
 }
 
-func RefreshUser(bot *botpkg.Bot, telegramID int) (c *user.User, isVerified bool, err *eepkg.ExtendedError) {
+func RefreshUser(bot *botpkg.Bot, u *user.User) (isVerified bool, err *eepkg.ExtendedError) {
 	// Обновляем данные пользователя
-	chatMember, err := bot.GetChatMember(telegramID)
+	chatMember, err := bot.GetChatMember(u.TelegramID)
 	if err != nil {
 		return
 	}
 
-	uc := user.NewCollectionDefault()
-	c = &user.User{
-		TelegramID: chatMember.User.ID,
-		Username:   chatMember.User.UserName,
-		FirstName:  chatMember.User.FirstName,
-		LastName:   chatMember.User.LastName,
-		Status:     chatMember.Status,
-	}
-	c.Init(uc)
 	// Нет Username? Не подписан на канал? - удаляем в DB, continue
 	if chatMember.User.UserName == "" || chatMember.Status != "member" {
-		err = uc.RemoveByTelegramID(telegramID)
+		err = u.RemoveId()
 		return
 	}
 	isVerified = true
 
 	//Записать изменения в DB
-	_, err = c.UpdateOneOrInsertTelegramId()
+	u.Username = chatMember.User.UserName
+	u.FirstName = chatMember.User.FirstName
+	u.LastName = chatMember.User.LastName
+	u.Status = chatMember.Status
+	_, err = u.UpsertId()
 	return
 }

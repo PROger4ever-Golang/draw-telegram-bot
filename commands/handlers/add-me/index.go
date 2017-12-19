@@ -27,15 +27,15 @@ const noChannelSubscription = `Ошибка регистрации.
 Пожалуйста, сначала подпишитесь на канал @mazimota, и обязательно возвращайтесь зарегистрироваться у бота)
 ` + detailsInfo
 const registeredSuccessfully = `Вы зарегистрированы!
+Информация о Вас и время вашего последнего "онлайна у бота" сохранены.
 Желаем удачи!
 ` + detailsInfo
 const alreadyRegisteredRecently = `Вы уже зарегистрированы!
-Повторная регистрация не требуется.
+Информация о Вас и время вашего последнего "онлайна у бота" обновлены совсем недавно.
 Желаем удачи!
 ` + detailsInfo
 const alreadyRegistered = `Вы уже зарегистрированы!
-Повторная регистрация не требуется.
-Мы обновили Ваши данные в базе бота.
+Информация о Вас и время вашего последнего "онлайна у бота" обновлены.
 Желаем удачи!
 ` + detailsInfo
 
@@ -87,7 +87,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) *eepkg.Extende
 	if err != mgo.ErrNotFound {
 		err = nil
 		minUpdateTime := time.Now().Add(-30 * time.Second)
-		if minUpdateTime.Before(u.UpdatedAt) {
+		if minUpdateTime.Before(u.LastAdditionAt) {
 			return h.Bot.SendMessageUserKeyboard(int64(msg.Chat.ID), alreadyRegisteredRecently)
 		}
 	}
@@ -117,6 +117,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) *eepkg.Extende
 	u.FirstName = msg.From.FirstName
 	u.LastName = msg.From.LastName
 	u.Status = chatMember.Status
+	u.LastAdditionAt = time.Now()
 	info, err := u.UpsertId()
 	if err != nil {
 		return err

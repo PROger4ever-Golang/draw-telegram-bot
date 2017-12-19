@@ -3,6 +3,8 @@ package sampleNavigator
 import (
 	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
 	"errors"
+	"math"
+
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -14,10 +16,10 @@ type SampleNavigator struct {
 	MatchM   bson.M
 	SampleM  bson.M
 	Pipeline []bson.M
-	Capacity int
 
-	Buf   []bson.M
-	Index int
+	Buf    []bson.M
+	BufLen int
+	Index  int
 
 	ShownIds  []bson.ObjectId
 	ShownIdsM bson.M
@@ -55,9 +57,11 @@ func (sn *SampleNavigator) Next(model mongo.Model) (err error) {
 	return
 }
 
-func New(collection *mongo.BaseCollection, matchM bson.M, capacity int) *SampleNavigator {
+func New(collection *mongo.BaseCollection, matchM bson.M, length int) *SampleNavigator {
+	bufLen := int(math.Ceil(float64(length)*0.2)) + length
+
 	sampleM := bson.M{
-		"size": capacity,
+		"size": bufLen,
 	}
 
 	//if match has $and already
@@ -84,12 +88,12 @@ func New(collection *mongo.BaseCollection, matchM bson.M, capacity int) *SampleN
 
 	sn := SampleNavigator{
 		Collection: collection,
-		Capacity:   capacity,
+		BufLen:     bufLen,
 		MatchM:     matchM,
 		SampleM:    sampleM,
 
 		Pipeline:  pipeline,
-		ShownIds:  make([]bson.ObjectId, 0, capacity),
+		ShownIds:  make([]bson.ObjectId, 0, bufLen),
 		ShownIdsM: shownIdsM,
 	}
 	return &sn

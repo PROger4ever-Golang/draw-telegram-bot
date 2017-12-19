@@ -90,7 +90,7 @@ func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err *eepkg.Ex
 		return err
 	}
 
-	u, isVerified, err := contenderUtils.RefreshUser(h.Bot, u.TelegramID)
+	isVerified, err := contenderUtils.RefreshUser(h.Bot, u)
 	if !isVerified {
 		return userNotRegisteredAnymoreError
 	}
