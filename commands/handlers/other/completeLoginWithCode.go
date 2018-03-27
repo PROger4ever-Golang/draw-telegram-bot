@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/error"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
-	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
+	"github.com/PROger4ever/draw-telegram-bot/bot"
+	"github.com/PROger4ever/draw-telegram-bot/config"
+	"github.com/PROger4ever/draw-telegram-bot/userApi"
 )
 
 type CompleteLoginWithCodeHandler struct {

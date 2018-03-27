@@ -3,7 +3,7 @@ package mongo
 import (
 	"fmt"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/error"
 	"gopkg.in/mgo.v2"
 )
 

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/commands/utils"
-	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
-	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
+	"github.com/PROger4ever/draw-telegram-bot/commands/utils"
+	"github.com/PROger4ever/draw-telegram-bot/config"
+	"github.com/PROger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/userApi"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 

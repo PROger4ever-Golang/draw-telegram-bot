@@ -3,10 +3,10 @@ package user
 import (
 	"reflect"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/error"
 	"gopkg.in/mgo.v2"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
+	"github.com/PROger4ever/draw-telegram-bot/mongo"
 	"gopkg.in/mgo.v2/bson"
 	"time"
 )

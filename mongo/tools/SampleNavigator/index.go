@@ -1,7 +1,7 @@
 package sampleNavigator
 
 import (
-	"bitbucket.org/proger4ever/draw-telegram-bot/mongo"
+	"github.com/PROger4ever/draw-telegram-bot/mongo"
 	"errors"
 	"math"
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/error"
 )
 
 func PanicIfExtended(err *eepkg.ExtendedError, msg string) {

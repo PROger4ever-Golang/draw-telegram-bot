@@ -3,7 +3,7 @@ package config
 import (
 	"strings"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/error"
 	"github.com/jinzhu/configor"
 )
 

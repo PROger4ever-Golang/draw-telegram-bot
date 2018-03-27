@@ -3,7 +3,7 @@ package mongo
 import (
 	"time"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/error"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )

@@ -3,11 +3,11 @@ package addmepkg
 import (
 	"time"
 
-	"bitbucket.org/proger4ever/draw-telegram-bot/bot"
-	"bitbucket.org/proger4ever/draw-telegram-bot/config"
-	"bitbucket.org/proger4ever/draw-telegram-bot/error"
-	"bitbucket.org/proger4ever/draw-telegram-bot/mongo/models/user"
-	"bitbucket.org/proger4ever/draw-telegram-bot/userApi"
+	"github.com/PROger4ever/draw-telegram-bot/bot"
+	"github.com/PROger4ever/draw-telegram-bot/config"
+	"github.com/PROger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever/draw-telegram-bot/mongo/models/user"
+	"github.com/PROger4ever/draw-telegram-bot/userApi"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
