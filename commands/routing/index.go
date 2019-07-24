@@ -61,7 +61,7 @@ func (r *BaseRouter) Execute(cmdName string, msg *tgbotapi.Message) (err *eepkg.
 
 	if h.IsForOwnersOnly() {
 		isOwner := msg.From != nil && msg.From.UserName == r.Conf.Management.OwnerUsername
-		isOwnerChannel := msg.Chat.UserName == r.Conf.Management.ChannelUsername
+		isOwnerChannel := msg.Chat.UserName == r.Conf.Management.ChatUsername
 		if !isOwner && !isOwnerChannel {
 			return eepkg.New(true, false, adminsOnlyCommand)
 		}

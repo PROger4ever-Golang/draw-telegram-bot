@@ -68,7 +68,7 @@ func (h *Handler) Init(conf *config.Config, tool *userapi.Tool, bot *botpkg.Bot)
 }
 
 func (h *Handler) Execute(msg *tgbotapi.Message, params []string) (err *eepkg.ExtendedError) {
-	if msg.Chat.UserName != h.Conf.Management.ChannelUsername {
+	if msg.Chat.UserName != h.Conf.Management.ChatUsername {
 		return eepkg.New(true, false, commandUnavailable)
 	}
 

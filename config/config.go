@@ -29,8 +29,8 @@ type Config struct {
 		Debug     int
 	}
 	Management struct {
-		OwnerUsername   string `required:"true" env:"MANAGEMENT_OWNER_USERNAME"`
-		ChannelUsername string `required:"true" env:"MANAGEMENT_CHANNEL_USERNAME"`
+		OwnerUsername string `required:"true" env:"MANAGEMENT_OWNER_USERNAME"`
+		ChatUsername  string `required:"true" env:"MANAGEMENT_CHAT_USERNAME"`
 	}
 	Mongo struct {
 		Host string `required:"true"`

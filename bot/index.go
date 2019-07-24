@@ -106,7 +106,7 @@ func (b *Bot) SendErrorUserKeyboard(chatID int64, err error) *eepkg.ExtendedErro
 
 func (b *Bot) GetChatMember(telegramID int) (cm tgbotapi.ChatMember, err *eepkg.ExtendedError) {
 	cm, errStd := b.BotApi.GetChatMember(tgbotapi.ChatConfigWithUser{
-		SuperGroupUsername: "@" + b.Conf.Management.ChannelUsername,
+		SuperGroupUsername: "@" + b.Conf.Management.ChatUsername,
 		UserID:             telegramID,
 	})
 	return cm, eepkg.Wrap(errStd, false, true, cantQueryChatMember)
@@ -114,7 +114,7 @@ func (b *Bot) GetChatMember(telegramID int) (cm tgbotapi.ChatMember, err *eepkg.
 
 func (b *Bot) GetChatMemberCount() (count int, err *eepkg.ExtendedError) {
 	count, errStd := b.BotApi.GetChatMembersCount(tgbotapi.ChatConfig{
-		SuperGroupUsername: "@" + b.Conf.Management.ChannelUsername,
+		SuperGroupUsername: "@" + b.Conf.Management.ChatUsername,
 	})
 	return count, eepkg.Wrap(errStd, false, true, cantQueryChatMembersCount)
 }
