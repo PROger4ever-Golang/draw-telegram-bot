@@ -13,7 +13,9 @@ type BotApiConfig struct {
 	ID                  int    `required:"true"`
 	Key                 string `required:"true"`
 	Debug               bool
-	DisableNotification bool `env:"BOTAPI_DISABLE_NOTIFICATION"`
+	DisableNotification bool   `env:"BOTAPI_DISABLE_NOTIFICATION"`
+	ProxyUrl            string `env:"BOTAPI_PROXY_URL"`
+	ProxyTimeout        int64  `required:"true" env:"BOTAPI_PROXY_TIMEOUT"`
 }
 
 type Config struct {

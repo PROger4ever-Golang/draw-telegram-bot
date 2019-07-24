@@ -2,6 +2,8 @@ package botpkg
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/PROger4ever-Golang/draw-telegram-bot/commands/utils"
@@ -13,6 +15,7 @@ import (
 
 const minRequestPeriod = 334 * time.Millisecond //should be changed after experiments later
 
+const proxyUrlInvalid = "Proxy URL is invalid"
 const cantConnectToBotApi = "Can't connect to Bot API"
 const cantGetUpdatesChan = "Can't get channel to get updates from Bot API"
 
@@ -37,9 +40,32 @@ func (b *Bot) Init(conf *config.Config) (err *eepkg.ExtendedError) {
 }
 
 func (b *Bot) initBotApi(bac *config.BotApiConfig) *eepkg.ExtendedError {
-	competeKey := fmt.Sprintf("%v:%v", bac.ID, bac.Key)
 	var errStd error
-	b.BotApi, errStd = tgbotapi.NewBotAPI(competeKey)
+
+	httpClient := &http.Client{
+		Timeout: time.Duration(bac.ProxyTimeout) * time.Second,
+	}
+
+	//SOCKS5-proxy (alfa-stub)
+	//if bac.ProxyUrl != "" {
+	//	dialer, errStd := proxy.SOCKS5("tcp", bac.ProxyUrl, nil, proxy.Direct)
+	//	if errStd != nil {
+	//		return eepkg.Wrap(errStd, false, true, proxyUrlInvalid)
+	//	}
+	//	httpClient.Transport = &http.Transport{Dial:dialer.Dial}
+	//}
+
+	//http(s)-proxy
+	if bac.ProxyUrl != "" {
+		proxyUrl, errStd := url.Parse(bac.ProxyUrl)
+		if errStd != nil {
+			return eepkg.Wrap(errStd, false, true, proxyUrlInvalid)
+		}
+		httpClient.Transport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+	}
+
+	completeKey := fmt.Sprintf("%v:%v", bac.ID, bac.Key)
+	b.BotApi, errStd = tgbotapi.NewBotAPIWithClient(completeKey, httpClient)
 	if errStd != nil {
 		return eepkg.Wrap(errStd, false, true, cantConnectToBotApi)
 	}
