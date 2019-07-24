@@ -3,10 +3,10 @@ package notificationspkg
 import (
 	"fmt"
 
-	"github.com/PROger4ever/draw-telegram-bot/bot"
-	"github.com/PROger4ever/draw-telegram-bot/config"
-	"github.com/PROger4ever/draw-telegram-bot/error"
-	"github.com/PROger4ever/draw-telegram-bot/userApi"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/bot"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/config"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/error"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/userApi"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 

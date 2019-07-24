@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/PROger4ever/draw-telegram-bot/bot"
-	"github.com/PROger4ever/draw-telegram-bot/config"
-	"github.com/PROger4ever/draw-telegram-bot/error"
-	"github.com/PROger4ever/draw-telegram-bot/mongo/models/user"
-	"github.com/PROger4ever/draw-telegram-bot/userApi"
-	contenderUtils "github.com/PROger4ever/draw-telegram-bot/utils/contender"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/bot"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/config"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/error"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/mongo/models/user"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/userApi"
+	contenderUtils "github.com/PROger4ever-Golang/draw-telegram-bot/utils/contender"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"gopkg.in/mgo.v2"
 )

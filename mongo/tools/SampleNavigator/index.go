@@ -1,8 +1,8 @@
 package sampleNavigator
 
 import (
-	"github.com/PROger4ever/draw-telegram-bot/mongo"
 	"errors"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/mongo"
 	"math"
 
 	"gopkg.in/mgo.v2/bson"

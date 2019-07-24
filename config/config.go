@@ -3,7 +3,7 @@ package config
 import (
 	"strings"
 
-	"github.com/PROger4ever/draw-telegram-bot/error"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/error"
 	"github.com/jinzhu/configor"
 )
 

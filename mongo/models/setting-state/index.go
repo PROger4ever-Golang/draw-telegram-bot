@@ -3,8 +3,8 @@ package settingState
 import (
 	"reflect"
 
-	"github.com/PROger4ever/draw-telegram-bot/error"
-	"github.com/PROger4ever/draw-telegram-bot/mongo"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/error"
+	"github.com/PROger4ever-Golang/draw-telegram-bot/mongo"
 	tuapi "github.com/PROger4ever/telegramapi"
 	"github.com/PROger4ever/telegramapi/mtproto"
 	"gopkg.in/mgo.v2"
