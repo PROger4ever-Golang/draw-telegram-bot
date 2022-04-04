@@ -63,7 +63,7 @@ type SettingStateCollection struct {
 }
 
 func (c *SettingStateCollection) Init(connection *mongo.Connection) {
-	c.BaseCollection = mongo.NewCollection(connection /*c,*/, "mazimotaBot", "settings", reflect.TypeOf(&SettingState{}))
+	c.BaseCollection = mongo.NewCollection(connection /*c,*/, "draw_telegram_bot", "settings", reflect.TypeOf(&SettingState{}))
 }
 
 func (c *SettingStateCollection) GetIndexes() []mgo.Index {

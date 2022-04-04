@@ -30,8 +30,7 @@ const incomingMessage = `Got msg for me: %v
     from:    id%d %s <%s %s>
 `
 
-const systemErrorText = `Извините, произошла системная ошибка бота.
-Обратитесь к администраторам на канале @mazimota_chat`
+const systemErrorText = `Извините, произошла системная ошибка бота.`
 
 var systemError = eepkg.New(true, false, systemErrorText)
 

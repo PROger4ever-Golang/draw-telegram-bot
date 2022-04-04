@@ -109,7 +109,7 @@ type UserCollection struct {
 }
 
 func (c *UserCollection) Init(connection *mongo.Connection) {
-	c.BaseCollection = mongo.NewCollection(connection /*c,*/, "mazimotaBot", "users", reflect.TypeOf(&User{}))
+	c.BaseCollection = mongo.NewCollection(connection /*c,*/, "draw_telegram_bot", "users", reflect.TypeOf(&User{}))
 }
 
 func (c *UserCollection) GetIndexes() []mgo.Index {
